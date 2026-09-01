@@ -33,22 +33,48 @@ export interface VoiceSettings {
   use_speaker_boost: boolean;
 }
 
+export interface TaskExecutionLog {
+  timestamp: string;
+  level: 'INFO' | 'DEBUG' | 'WARN' | 'ERROR';
+  stage: string;
+  message: string;
+  duration_ms?: number;
+  metadata?: Record<string, any>;
+}
+
 export interface HistoryItem {
   id: string;
+  history_item_id?: string;
+  request_id?: string;
   text: string;
+  original_text?: string;
+  original_file_name?: string;
+  original_file_type?: string;
+  original_file_size_bytes?: number;
+  original_file_url?: string;
+  output_audio_url?: string;
+  output_video_url?: string;
+  output_subtitles_url?: string;
   voice_id: string;
   voice_name: string;
   model_id: string;
   model_name: string;
   voice_settings: VoiceSettings;
   timestamp: number;
+  date_unix?: number;
   audioUrl?: string;
   duration?: number;
   latency?: number;
+  latency_ms?: number;
   fileSize?: string;
+  billed_characters?: number;
+  cost_estimate_usd?: number;
+  status?: 'done' | 'processing' | 'failed';
   rating: number;
   comment: string;
-  source?: 'tts' | 'sts' | 'design'; // source of generation
+  source?: 'tts' | 'sts' | 'dubbing' | 'scribe' | 'isolation' | 'sfx' | 'design' | 'dialogue' | 'music' | 'cloning' | 'pvc';
+  source_name_zh?: string;
+  logs?: TaskExecutionLog[];
 }
 
 export interface ComparisonResult {
@@ -75,15 +101,29 @@ export interface VoiceDesignParams {
 
 export interface CloudHistoryItem {
   history_item_id: string;
+  request_id?: string;
   voice_id: string;
   voice_name: string;
   model_id: string;
   text: string;
+  original_text?: string;
+  original_file_name?: string;
+  original_file_type?: string;
+  original_file_size_bytes?: number;
+  original_file_url?: string;
+  output_audio_url?: string;
+  output_video_url?: string;
+  output_subtitles_url?: string;
   date_unix: number;
   character_count_change_from: number;
   character_count_change_to: number;
+  billed_characters?: number;
+  cost_estimate_usd?: number;
   content_type: string;
   state: string;
+  source?: string;
+  source_name_zh?: string;
+  logs?: TaskExecutionLog[];
 }
 
 // Enterprise Subscription & Workspace Billing Interfaces
@@ -311,6 +351,41 @@ export interface PronunciationDictionary {
   rules: PronunciationRule[];
 }
 
+export interface MusicGenerationParams {
+  prompt: string;
+  model_id: 'music_v1' | 'music_v2';
+  genre: string;
+  mood: string;
+  duration_seconds: number;
+  is_instrumental: boolean;
+  lyrics?: string;
+  tempo_bpm?: number;
+  key_signature?: string;
+  stems_enabled?: boolean;
+}
+
+export interface MusicTrackResult {
+  id: string;
+  title: string;
+  prompt: string;
+  model_id: string;
+  genre: string;
+  mood: string;
+  duration_seconds: number;
+  is_instrumental: boolean;
+  audio_url: string;
+  stems?: {
+    vocals_url?: string;
+    drums_url?: string;
+    bass_url?: string;
+    melody_url?: string;
+  };
+  created_at: number;
+  latency_ms?: number;
+  lyrics?: string;
+  bpm?: number;
+}
+
 // Shared Voice Library (Community Market) Interface
 export interface SharedVoice {
   voice_id: string;
@@ -324,5 +399,38 @@ export interface SharedVoice {
   usage_characters_count?: number;
   cloned_by_count?: number;
   rate?: number;
+}
+
+// Professional Voice Cloning (PVC) & Voice Slots Interfaces
+export interface PvcSlot {
+  slot_id: string;
+  slot_index: number;
+  status: 'empty' | 'training' | 'ready' | 'verifying' | 'failed';
+  voice_id?: string;
+  voice_name?: string;
+  speaker_name?: string;
+  description?: string;
+  fidelity_score?: number; // e.g. 99.4%
+  snr_db?: number; // e.g. 38.5 dB
+  dataset_duration_seconds?: number; // e.g. 2400 (40 mins)
+  dataset_files_count?: number;
+  languages_supported?: string[];
+  consent_verified?: boolean;
+  base_model?: string;
+  created_at?: string;
+  updated_at?: string;
+  preview_audio_url?: string;
+  training_progress?: number; // 0 to 100
+  training_stage?: string;
+}
+
+export interface PvcSlotsOverview {
+  total_pvc_slots: number;
+  used_pvc_slots: number;
+  available_pvc_slots: number;
+  total_custom_slots: number;
+  used_custom_slots: number;
+  can_use_pvc: boolean;
+  slots: PvcSlot[];
 }
 

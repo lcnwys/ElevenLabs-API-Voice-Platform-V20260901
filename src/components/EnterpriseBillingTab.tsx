@@ -52,7 +52,9 @@ import {
   WorkspaceMember,
   WorkspaceGroup,
   WorkspaceWebhook,
-  EnterpriseAuditLogItem
+  EnterpriseAuditLogItem,
+  PvcSlotsOverview,
+  PvcSlot
 } from '../types';
 
 interface EnterpriseBillingProps {
@@ -61,6 +63,7 @@ interface EnterpriseBillingProps {
   apiFetch: (url: string, options?: RequestInit) => Promise<Response>;
   apiStatus: { configured: boolean; mode: string };
   onOpenSettings?: () => void;
+  onNavigateToTab?: (tab: string) => void;
 }
 
 export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
@@ -68,11 +71,13 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
   t,
   apiFetch,
   apiStatus,
-  onOpenSettings
+  onOpenSettings,
+  onNavigateToTab
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'keys' | 'members' | 'groups' | 'webhooks' | 'audit'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'pvc_slots' | 'keys' | 'members' | 'groups' | 'webhooks' | 'audit'>('overview');
 
   const [subscription, setSubscription] = useState<SubscriptionUsage | null>(null);
+  const [pvcOverview, setPvcOverview] = useState<PvcSlotsOverview | null>(null);
   const [costItems, setCostItems] = useState<CostAttributionItem[]>([]);
   const [totalCostUsd, setTotalCostUsd] = useState(0);
   const [apiKeys, setApiKeys] = useState<ServiceApiKey[]>([]);
@@ -81,6 +86,9 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
   const [webhooks, setWebhooks] = useState<WorkspaceWebhook[]>([]);
   const [auditLogs, setAuditLogs] = useState<EnterpriseAuditLogItem[]>([]);
   const [securityPolicy, setSecurityPolicy] = useState<any>(null);
+  const [playingPvcSlotId, setPlayingPvcSlotId] = useState<string | null>(null);
+  const [releasingSlotId, setReleasingSlotId] = useState<string | null>(null);
+  const [retrainingSlotId, setRetrainingSlotId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -193,6 +201,13 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
         const secData = await secRes.json();
         setSecurityPolicy(secData);
       }
+
+      // 9. PVC Slots Fleet
+      const pvcRes = await apiFetch('/api/pvc/slots');
+      if (pvcRes.ok) {
+        const pvcData = await pvcRes.json();
+        setPvcOverview(pvcData);
+      }
     } catch (err) {
       console.error('Failed to load enterprise data:', err);
     } finally {
@@ -272,6 +287,61 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       }
     } catch (err) {
       console.error('Failed to delete key:', err);
+    }
+  };
+
+  const handleReleasePvcSlot = async (slotId: string) => {
+    if (!confirm(language === 'zh' ? '确定要释放该专业声音克隆插槽吗？已训练的模型将被归档释放。' : 'Are you sure you want to release this PVC slot?')) return;
+    try {
+      setReleasingSlotId(slotId);
+      const res = await apiFetch(`/api/pvc/slots/${slotId}/release`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setPvcOverview(data.overview);
+      }
+    } catch (err) {
+      console.error('Failed to release slot:', err);
+    } finally {
+      setReleasingSlotId(null);
+    }
+  };
+
+  const handleRetrainPvcSlot = async (slotId: string) => {
+    try {
+      setRetrainingSlotId(slotId);
+      const res = await apiFetch(`/api/pvc/slots/${slotId}/retrain`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setPvcOverview(data.overview);
+      }
+    } catch (err) {
+      console.error('Failed to retrain slot:', err);
+    } finally {
+      setRetrainingSlotId(null);
+    }
+  };
+
+  const handlePlayPvcPreview = async (slot: PvcSlot) => {
+    if (playingPvcSlotId === slot.slot_id) {
+      setPlayingPvcSlotId(null);
+      return;
+    }
+    try {
+      setPlayingPvcSlotId(slot.slot_id);
+      const res = await apiFetch(`/api/pvc/slots/${slot.slot_id}/preview`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => setPlayingPvcSlotId(null);
+        audio.onerror = () => setPlayingPvcSlotId(null);
+        await audio.play();
+      } else {
+        setPlayingPvcSlotId(null);
+      }
+    } catch (err) {
+      console.error('Preview playback failed:', err);
+      setPlayingPvcSlotId(null);
     }
   };
 
@@ -443,6 +513,7 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-800/80">
         {[
           { id: 'overview', icon: PieChart, label_zh: '用量与分账总览', label_en: 'Overview & Billing' },
+          { id: 'pvc_slots', icon: Layers, label_zh: `专业音色插槽 (${pvcOverview ? `${pvcOverview.used_slots}/${pvcOverview.total_slots}` : '2/6'})`, label_en: `Voice Slots (${pvcOverview ? `${pvcOverview.used_slots}/${pvcOverview.total_slots}` : '2/6'})` },
           { id: 'keys', icon: Key, label_zh: `业务密钥 (${apiKeys.length})`, label_en: `Scoped Keys (${apiKeys.length})` },
           { id: 'members', icon: Users, label_zh: `多席位成员 (${members.length})`, label_en: `Members (${members.length})` },
           { id: 'groups', icon: Shield, label_zh: `部门权限组 (${groups.length})`, label_en: `Permission Groups (${groups.length})` },
@@ -603,24 +674,26 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
             const tierInfo = getTierInfo(subscription?.tier);
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {/* Plan Tier Card */}
-                <div className="bg-slate-900/40 border border-purple-500/20 rounded-2xl p-5 backdrop-blur-md relative overflow-hidden shadow-xl shadow-purple-950/10">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <CreditCard className="h-3.5 w-3.5 text-purple-400" />
-                      <span>{t.ent_plan_tier}</span>
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${tierInfo.badgeClass}`}>
-                      {tierInfo.badge}
-                    </span>
-                  </div>
-
-                  <div className="mt-3">
-                    <div className="text-xl font-black text-white flex items-baseline gap-2">
-                      <span>{tierInfo.displayName}</span>
+                <div className="bg-slate-900/40 border border-purple-500/20 rounded-2xl p-5 backdrop-blur-md relative overflow-hidden shadow-xl shadow-purple-950/10 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <CreditCard className="h-3.5 w-3.5 text-purple-400" />
+                        <span>{t.ent_plan_tier}</span>
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${tierInfo.badgeClass}`}>
+                        {tierInfo.badge}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-purple-300/80 mt-1 font-medium">{tierInfo.desc}</p>
+
+                    <div className="mt-3">
+                      <div className="text-xl font-black text-white flex items-baseline gap-2">
+                        <span>{tierInfo.displayName}</span>
+                      </div>
+                      <p className="text-[11px] text-purple-300/80 mt-1 font-medium">{tierInfo.desc}</p>
+                    </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-purple-500/20 flex items-center justify-between text-xs">
@@ -634,76 +707,133 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
                 </div>
 
                 {/* Character/Credits Quota Card */}
-                <div className="bg-slate-900/40 border border-purple-500/20 rounded-2xl p-5 backdrop-blur-md shadow-xl shadow-purple-950/10">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Coins className="h-3.5 w-3.5 text-indigo-400" />
-                      <span>{language === 'zh' ? '月度积分用量 (Credits / 字符)' : 'Monthly Credits & Quota'}</span>
-                    </span>
-                    <button
-                      onClick={() => setShowCreditsGuide(!showCreditsGuide)}
-                      className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 font-medium underline"
-                    >
-                      <Info className="h-3 w-3" />
-                      <span>{language === 'zh' ? '积分换算说明' : 'Credit Ratio'}</span>
-                    </button>
-                  </div>
-
-                  <div className="mt-3">
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-xl font-black text-white font-mono">
-                        {(subscription?.character_count ?? 652400).toLocaleString()}
+                <div className="bg-slate-900/40 border border-purple-500/20 rounded-2xl p-5 backdrop-blur-md shadow-xl shadow-purple-950/10 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Coins className="h-3.5 w-3.5 text-indigo-400" />
+                        <span>{language === 'zh' ? '月度积分用量' : 'Monthly Credits'}</span>
                       </span>
-                      <span className="text-xs text-slate-400 font-mono">
-                        / {(subscription?.character_limit ?? 1810000).toLocaleString()}
-                      </span>
+                      <button
+                        onClick={() => setShowCreditsGuide(!showCreditsGuide)}
+                        className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 font-medium underline"
+                      >
+                        <Info className="h-3 w-3" />
+                        <span>{language === 'zh' ? '说明' : 'Ratio'}</span>
+                      </button>
                     </div>
 
-                    {/* Progress bar */}
-                    <div className="w-full bg-slate-950 rounded-full h-2 mt-2.5 overflow-hidden border border-purple-500/20">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          charPercentage > 85 ? 'bg-gradient-to-r from-amber-500 to-red-500' : 'bg-gradient-to-r from-purple-500 to-indigo-500'
-                        }`}
-                        style={{ width: `${charPercentage}%` }}
-                      />
+                    <div className="mt-3">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xl font-black text-white font-mono">
+                          {(subscription?.character_count ?? 652400).toLocaleString()}
+                        </span>
+                        <span className="text-xs text-slate-400 font-mono">
+                          / {(subscription?.character_limit ?? 1810000).toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="w-full bg-slate-950 rounded-full h-2 mt-2.5 overflow-hidden border border-purple-500/20">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            charPercentage > 85 ? 'bg-gradient-to-r from-amber-500 to-red-500' : 'bg-gradient-to-r from-purple-500 to-indigo-500'
+                          }`}
+                          style={{ width: `${charPercentage}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-purple-500/20 flex items-center justify-between text-xs">
                     <span className="text-slate-400">{t.ent_reset_in}:</span>
                     <span className="text-purple-300 font-semibold font-mono">
-                      {resetDays} {language === 'zh' ? '天后自动刷新重置' : 'Days Remaining'}
+                      {resetDays} {language === 'zh' ? '天后重置' : 'Days Left'}
                     </span>
                   </div>
                 </div>
 
-                {/* Spend & Estimated Bill Card */}
-                <div className="bg-slate-900/40 border border-purple-500/20 rounded-2xl p-5 backdrop-blur-md shadow-xl shadow-purple-950/10">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
-                      <span>{t.ent_est_spend}</span>
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                      USD
-                    </span>
+                {/* PVC Voice Slots Card */}
+                <div className="bg-slate-900/40 border border-purple-500/20 rounded-2xl p-5 backdrop-blur-md shadow-xl shadow-purple-950/10 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="h-3.5 w-3.5 text-purple-400" />
+                        <span>{language === 'zh' ? '专业音色插槽 (PVC)' : 'PVC Voice Slots'}</span>
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                        44.1kHz 母带
+                      </span>
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xl font-black text-white font-mono">
+                          {pvcOverview ? `${pvcOverview.used_slots} / ${pvcOverview.total_slots}` : '2 / 6'}
+                        </span>
+                        <span className="text-xs text-slate-400 font-mono">
+                          {pvcOverview ? `${pvcOverview.available_slots} ${language === 'zh' ? '可用' : 'Available'}` : '4 Available'}
+                        </span>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="w-full bg-slate-950 rounded-full h-2 mt-2.5 overflow-hidden border border-purple-500/20">
+                        <div
+                          className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${pvcOverview ? (pvcOverview.used_slots / pvcOverview.total_slots) * 100 : 33.3}%`
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="mt-3">
-                    <div className="text-xl font-black text-white font-mono flex items-baseline gap-1">
-                      <span className="text-emerald-400">$</span>
-                      <span>{subscription?.total_estimated_spend_usd ? subscription.total_estimated_spend_usd.toFixed(2) : totalCostUsd.toFixed(2)}</span>
+                  <div className="mt-4 pt-3 border-t border-purple-500/20 flex items-center justify-between text-xs">
+                    <button
+                      onClick={() => setActiveSubTab('pvc_slots')}
+                      className="text-purple-300 hover:text-purple-100 font-bold flex items-center gap-1 transition text-[11px]"
+                    >
+                      <span>{language === 'zh' ? '管理插槽舰队 →' : 'Manage Fleet →'}</span>
+                    </button>
+                    {onNavigateToTab && (
+                      <button
+                        onClick={() => onNavigateToTab('cloning')}
+                        className="text-emerald-400 hover:text-emerald-300 text-[11px] font-bold"
+                      >
+                        {language === 'zh' ? '+ 训练新模型' : '+ Train New'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Spend & Estimated Bill Card */}
+                <div className="bg-slate-900/40 border border-purple-500/20 rounded-2xl p-5 backdrop-blur-md shadow-xl shadow-purple-950/10 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>{t.ent_est_spend}</span>
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                        USD
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      {language === 'zh' ? `基础月费 $${tierInfo.baseMonthlyFee} + 超额消耗计算` : `Base plan fee $${tierInfo.baseMonthlyFee} + overage`}
-                    </p>
+
+                    <div className="mt-3">
+                      <div className="text-xl font-black text-white font-mono flex items-baseline gap-1">
+                        <span className="text-emerald-400">$</span>
+                        <span>{subscription?.total_estimated_spend_usd ? subscription.total_estimated_spend_usd.toFixed(2) : totalCostUsd.toFixed(2)}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        {language === 'zh' ? `基础月费 $${tierInfo.baseMonthlyFee} + 实时消耗` : `Base $${tierInfo.baseMonthlyFee} + usage`}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-purple-500/20 flex items-center justify-between text-xs">
                     <span className="text-slate-400">{t.ent_concurrency_limit}:</span>
                     <span className="text-emerald-300 font-semibold font-mono">
-                      {subscription?.max_concurrency || 30} {language === 'zh' ? '路生产并发' : 'Concurrent Slots'}
+                      {subscription?.max_concurrency || 30} {language === 'zh' ? '路生产并发' : 'Concurrent'}
                     </span>
                   </div>
                 </div>
@@ -827,6 +957,231 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUBTAB: PROFESSIONAL VOICE CLONING (PVC) SLOTS FLEET */}
+      {activeSubTab === 'pvc_slots' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Header & Fleet Metrics */}
+          <div className="bg-slate-900/40 border border-purple-500/20 rounded-2xl p-5 backdrop-blur-md shadow-xl shadow-purple-950/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-purple-500/20 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-purple-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    {language === 'zh' ? '企业级专业声音克隆 (PVC) 插槽舰队管理' : 'Enterprise Professional Voice Slots Fleet'}
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                    44.1kHz 母带级 Hi-Fi
+                  </span>
+                </div>
+                <p className="text-slate-400 text-[11px] mt-1 max-w-2xl">
+                  {language === 'zh'
+                    ? '根据 Scale 企业订阅，工作区享有固定母带级声音克隆插槽。每个插槽独立训练深度声学网络，支持 100% 生物声学一致性与无限并发。'
+                    : 'Each dedicated PVC slot hosts a custom 44.1kHz neural acoustic model with zero voice degradation and multi-region inference.'}
+                </p>
+              </div>
+
+              {onNavigateToTab && (
+                <button
+                  onClick={() => onNavigateToTab('cloning')}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition shadow-md shadow-purple-900/30 shrink-0"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>{language === 'zh' ? '训练新专业音色 (PVC Studio)' : 'Train in PVC Studio'}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Quick Fleet Stats Bar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-purple-500/20">
+                <div className="text-slate-400">{language === 'zh' ? '总插槽容量' : 'Total Slots'}</div>
+                <div className="text-lg font-black text-white font-mono mt-0.5">
+                  {pvcOverview?.total_slots ?? 6} <span className="text-xs text-slate-500 font-normal">{language === 'zh' ? '个专用模型槽位' : 'slots'}</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-purple-500/20">
+                <div className="text-slate-400">{language === 'zh' ? '当前已就绪 / 训练中' : 'Active / Training'}</div>
+                <div className="text-lg font-black text-purple-300 font-mono mt-0.5">
+                  {pvcOverview?.used_slots ?? 2} <span className="text-xs text-slate-500 font-normal">{language === 'zh' ? '个模型已部署' : 'models active'}</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-purple-500/20">
+                <div className="text-slate-400">{language === 'zh' ? '可用空闲插槽' : 'Available Empty Slots'}</div>
+                <div className="text-lg font-black text-emerald-400 font-mono mt-0.5">
+                  {pvcOverview?.available_slots ?? 4} <span className="text-xs text-slate-500 font-normal">{language === 'zh' ? '个可立即训练' : 'ready to train'}</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-purple-500/20">
+                <div className="text-slate-400">{language === 'zh' ? '生物授权合规' : 'Biometric Consent'}</div>
+                <div className="text-lg font-black text-emerald-400 font-mono mt-0.5 flex items-center gap-1">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>100% 审计合规</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Slot Fleet Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pvcOverview?.slots.map((slot) => {
+              const isEmpty = slot.status === 'empty';
+              const isTraining = slot.status === 'training';
+              const isReady = slot.status === 'ready';
+
+              return (
+                <div
+                  key={slot.slot_id}
+                  className={`border rounded-2xl p-5 backdrop-blur-md flex flex-col justify-between transition-all duration-300 ${
+                    isEmpty
+                      ? 'bg-slate-950/40 border-dashed border-slate-800 hover:border-purple-500/40'
+                      : isTraining
+                      ? 'bg-purple-950/20 border-purple-500/40 shadow-lg shadow-purple-950/20'
+                      : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-400/50 shadow-xl shadow-purple-950/10'
+                  }`}
+                >
+                  {/* Top Slot Header */}
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                        SLOT #{slot.slot_number}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          isEmpty
+                            ? 'bg-slate-800 text-slate-400 border-slate-700'
+                            : isTraining
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        }`}
+                      >
+                        {isEmpty ? (language === 'zh' ? '空闲插槽' : 'Empty') : isTraining ? (language === 'zh' ? '母带训练中...' : 'Training...') : (language === 'zh' ? '就绪 (Active)' : 'Ready')}
+                      </span>
+                    </div>
+
+                    {/* Slot Content */}
+                    {isEmpty ? (
+                      <div className="py-8 text-center space-y-3">
+                        <div className="h-10 w-10 mx-auto rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                          <Plus className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-300">
+                            {language === 'zh' ? '可用专业插槽' : 'Empty PVC Slot'}
+                          </h4>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {language === 'zh' ? '支持上传 30 分钟母带样本训练' : 'Ready to accept high-fidelity studio datasets'}
+                          </p>
+                        </div>
+                        {onNavigateToTab && (
+                          <button
+                            onClick={() => onNavigateToTab('cloning')}
+                            className="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 rounded-lg text-xs font-bold transition"
+                          >
+                            {language === 'zh' ? '立即在此插槽训练' : 'Train this Slot'}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="mt-3 space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="text-sm font-bold text-white tracking-tight">{slot.name}</h4>
+                            <p className="text-[11px] text-purple-300/80 font-medium">{slot.speaker_name}</p>
+                          </div>
+                          {slot.fidelity_score && (
+                            <span className="px-2 py-0.5 bg-purple-950/80 border border-purple-500/30 rounded text-[10px] font-mono text-purple-200 font-bold">
+                              {slot.fidelity_score}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2">
+                          {slot.description}
+                        </p>
+
+                        {/* Specs Grid */}
+                        <div className="grid grid-cols-2 gap-1.5 pt-2 text-[10px] font-mono">
+                          <div className="p-1.5 bg-slate-950/60 rounded border border-slate-850 text-slate-400">
+                            采样率: <span className="text-slate-200">{slot.sample_rate || '44.1 kHz'}</span>
+                          </div>
+                          <div className="p-1.5 bg-slate-950/60 rounded border border-slate-850 text-slate-400">
+                            母带时长: <span className="text-slate-200">{slot.audio_duration_minutes || 30}m</span>
+                          </div>
+                          <div className="p-1.5 bg-slate-950/60 rounded border border-slate-850 text-slate-400">
+                            语言: <span className="text-slate-200">{slot.language || '多语言通用'}</span>
+                          </div>
+                          <div className="p-1.5 bg-slate-950/60 rounded border border-slate-850 text-slate-400">
+                            并发上限: <span className="text-emerald-400">{slot.concurrency_limit || 30} 路</span>
+                          </div>
+                        </div>
+
+                        {/* Training progress if training */}
+                        {isTraining && (
+                          <div className="space-y-1 pt-2">
+                            <div className="flex justify-between text-[10px] text-amber-300 font-mono">
+                              <span>深度声学嵌入训练中...</span>
+                              <span>{slot.training_progress ?? 45}%</span>
+                            </div>
+                            <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-amber-500/30">
+                              <div
+                                className="bg-amber-400 h-full rounded-full transition-all duration-300"
+                                style={{ width: `${slot.training_progress ?? 45}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Slot Actions Footer */}
+                  {!isEmpty && (
+                    <div className="mt-4 pt-3 border-t border-purple-500/20 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {isReady && (
+                          <button
+                            onClick={() => handlePlayPvcPreview(slot)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
+                              playingPvcSlotId === slot.slot_id
+                                ? 'bg-purple-500 text-slate-950'
+                                : 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/30'
+                            }`}
+                          >
+                            <Play className="h-3 w-3" />
+                            <span>{playingPvcSlotId === slot.slot_id ? (language === 'zh' ? '播放中...' : 'Playing') : (language === 'zh' ? '母带试听' : 'Preview')}</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRetrainPvcSlot(slot.slot_id)}
+                          disabled={retrainingSlotId === slot.slot_id || isTraining}
+                          className="px-2 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg text-[10px] font-semibold transition disabled:opacity-50"
+                          title={language === 'zh' ? '使用新样本微调' : 'Retrain with new data'}
+                        >
+                          {retrainingSlotId === slot.slot_id ? '...' : (language === 'zh' ? '微调重训' : 'Retrain')}
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => handleReleasePvcSlot(slot.slot_id)}
+                        disabled={releasingSlotId === slot.slot_id}
+                        className="px-2 py-1 text-slate-500 hover:text-red-400 text-[10px] font-semibold transition flex items-center gap-1"
+                        title={language === 'zh' ? '释放该插槽' : 'Release Slot'}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>{releasingSlotId === slot.slot_id ? '...' : (language === 'zh' ? '释放' : 'Release')}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

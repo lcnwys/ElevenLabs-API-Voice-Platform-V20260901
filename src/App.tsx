@@ -42,7 +42,8 @@ import {
   Scissors,
   Film,
   BookOpen,
-  Terminal
+  Terminal,
+  Music2
 } from 'lucide-react';
 import { translations } from './translations';
 import { ApiStatus, VoiceModel, Voice, VoiceSettings, HistoryItem, ComparisonResult, CloudHistoryItem, VoiceDesignParams } from './types';
@@ -55,6 +56,9 @@ import { DubbingStudioTab } from './components/DubbingStudioTab';
 import { PronunciationTab } from './components/PronunciationTab';
 import { SharedVoiceMarketTab } from './components/SharedVoiceMarketTab';
 import { ApiWorkbenchTab } from './components/ApiWorkbenchTab';
+import { HistoryTaskCenterTab } from './components/HistoryTaskCenterTab';
+import { MusicStudioTab } from './components/MusicStudioTab';
+import { VoiceCloningTab } from './components/VoiceCloningTab';
 
 export default function App() {
   // Localization: 'zh' or 'en'
@@ -76,7 +80,7 @@ export default function App() {
 
   // Full Official ElevenLabs Tab Suite
   const [activeTab, setActiveTab] = useState<
-    'workbench' | 'tts' | 'sts' | 'cloning' | 'design' | 'sfx' | 'isolation' | 'scribe' | 'dubbing' | 'dictionaries' | 'market' | 'agents' | 'enterprise' | 'library' | 'history'
+    'workbench' | 'tts' | 'sts' | 'cloning' | 'design' | 'music' | 'sfx' | 'isolation' | 'scribe' | 'dubbing' | 'dictionaries' | 'market' | 'agents' | 'enterprise' | 'library' | 'history'
   >('workbench');
 
   // Synchronize topCategory when activeTab changes
@@ -1359,6 +1363,20 @@ export default function App() {
                 <span>{t.tab_design}</span>
               </button>
 
+              {/* Tab Button: AI Music Studio */}
+              <button
+                id="tab_btn_music"
+                onClick={() => handleSelectTab('music')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'music'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <Music2 className="h-4 w-4 shrink-0 text-indigo-400" />
+                <span>{t.tab_music}</span>
+              </button>
+
               {/* Tab Button: Sound Effects Studio */}
               <button
                 id="tab_btn_sfx"
@@ -2185,175 +2203,22 @@ export default function App() {
                 </div>
               )}
 
-              {/* TAB 3: INSTANT VOICE CLONING (LIVE MIC & FILE UPLOAD) */}
+              {/* TAB 3: VOICE CLONING & PROFESSIONAL SLOTS (PVC / IVC) */}
               {activeTab === 'cloning' && (
-                <div className="space-y-6 max-w-3xl mx-auto">
-                  <div>
-                    <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
-                      <Mic className="h-5 w-5 text-emerald-400" />
-                      {t.clone_title}
-                    </h2>
-                    <p className="text-slate-400 text-xs mt-0.5">{t.clone_desc}</p>
-                  </div>
-
-                  {cloneSuccess && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-2xl p-4 flex items-start gap-3 animate-pulse">
-                      <Check className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="font-bold text-emerald-400 text-xs">{t.clone_success_banner}</h4>
-                        <p className="text-[11px] text-emerald-300/80 mt-1">
-                          {t.clone_success_desc}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <form onSubmit={handleCloneVoice} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
-                    {/* Inputs */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div className="space-y-2">
-                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                          {t.clone_name} <span className="text-emerald-400">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={cloneName}
-                          onChange={(e) => setCloneName(e.target.value)}
-                          placeholder={t.clone_name_placeholder}
-                          className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                          {t.clone_desc_label}
-                        </label>
-                        <input
-                          type="text"
-                          value={cloneDescription}
-                          onChange={(e) => setCloneDescription(e.target.value)}
-                          placeholder={t.clone_desc_placeholder}
-                          className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Choose audio sample source */}
-                    <div className="space-y-3">
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                        {t.clone_source_label}
-                      </label>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        
-                        {/* Live Recording */}
-                        <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 space-y-4 flex flex-col justify-between">
-                          <div className="space-y-1">
-                            <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-                              {t.clone_mic_method}
-                            </h4>
-                            <p className="text-[10px] text-slate-400 leading-normal">
-                              {t.clone_mic_desc}
-                            </p>
-                          </div>
-
-                          <div className="space-y-3 py-2 bg-slate-900/40 p-3 rounded-lg border border-slate-850/60">
-                            <div className="flex items-center justify-between text-xs text-slate-400">
-                              <span>{t.clone_recording_time}</span>
-                              <span className={`font-mono text-[11px] ${isRecording ? 'text-red-400 font-bold' : ''}`}>
-                                {formatTime(recordingSeconds)} / 00:30
-                              </span>
-                            </div>
-
-                            {recordedUrl && !isRecording && (
-                              <div className="space-y-1.5">
-                                <span className="text-[10px] text-slate-500 font-bold">{t.sts_recorded_preview}:</span>
-                                <audio src={recordedUrl} controls className="w-full h-8 accent-emerald-500" />
-                              </div>
-                            )}
-
-                            <div className="flex gap-2">
-                              {!isRecording ? (
-                                <button
-                                  type="button"
-                                  onClick={startRecording}
-                                  className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer"
-                                >
-                                  <Mic className="h-3.5 w-3.5" />
-                                  {t.clone_record_start}
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => stopRecording()}
-                                  className="flex-1 bg-red-500 text-white font-bold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 animate-pulse transition cursor-pointer"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                  {t.clone_record_stop}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* File Upload */}
-                        <div className="border border-slate-800 bg-slate-950 rounded-xl p-4 space-y-4 flex flex-col justify-between">
-                          <div className="space-y-1">
-                            <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                              <Upload className="h-3.5 w-3.5 text-emerald-400" />
-                              {t.clone_upload_method}
-                            </h4>
-                            <p className="text-[10px] text-slate-400 leading-normal">
-                              {t.clone_upload_desc}
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <input
-                              type="file"
-                              accept="audio/*"
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  setCloneFile(e.target.files[0]);
-                                  setRecordedUrl(null);
-                                }
-                              }}
-                              className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 file:cursor-pointer"
-                            />
-                            {cloneFile && (
-                              <p className="text-[10px] text-slate-500">
-                                {t.sts_ready_file}: {cloneFile.name} ({(cloneFile.size / 1024 / 1024).toFixed(2)} MB)
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                      </div>
-                    </div>
-
-                    <div className="border-t border-slate-800 pt-5">
-                      <button
-                        type="submit"
-                        disabled={isCloning || !cloneName.trim() || !cloneFile}
-                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs py-3.5 px-4 rounded-xl shadow-lg hover:shadow-emerald-500/20 transition disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        {isCloning ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                            <span>{t.cloning_btn_loading}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4 fill-slate-950 text-slate-950" />
-                            <span>{t.clone_submit_btn}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
-                </div>
+                <VoiceCloningTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                  apiStatus={apiStatus}
+                  onVoiceAdded={(newVoice) => {
+                    setVoices(prev => {
+                      if (prev.some(v => v.voice_id === newVoice.voice_id)) return prev;
+                      return [newVoice, ...prev];
+                    });
+                    setSelectedVoiceId(newVoice.voice_id);
+                    setStsVoiceId(newVoice.voice_id);
+                  }}
+                />
               )}
 
               {/* TAB 4: VOICE DESIGN (AI ACOUSTICS COORDINATES GENERATOR) */}
@@ -2571,6 +2436,16 @@ export default function App() {
                 </div>
               )}
 
+              {/* TAB: AI MUSIC STUDIO (ELEVEN MUSIC V2) */}
+              {activeTab === 'music' && (
+                <MusicStudioTab
+                  apiKeyConfigured={apiStatus.configured}
+                  onNotify={(msg, type) => {
+                    if (type === 'error') alert(msg);
+                  }}
+                />
+              )}
+
               {/* TAB: AI SOUND EFFECTS STUDIO */}
               {activeTab === 'sfx' && (
                 <SoundEffectsTab
@@ -2650,6 +2525,7 @@ export default function App() {
                   apiFetch={apiFetch}
                   apiStatus={apiStatus}
                   onOpenSettings={() => setShowSettings(true)}
+                  onNavigateToTab={(tab) => handleSelectTab(tab as any)}
                 />
               )}
 
@@ -2745,276 +2621,20 @@ export default function App() {
                 </div>
               )}
 
-              {/* TAB 6: EVALUATION LOGS & CLOUD HISTORY SYNC */}
+              {/* TAB 6: TASK HISTORY, ORIGINAL FILES & TRACING CENTER */}
               {activeTab === 'history' && (
-                <div className="space-y-6">
-                  {/* Title block */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
-                        <History className="h-5 w-5 text-emerald-400" />
-                        {t.history_title}
-                      </h2>
-                      <p className="text-slate-400 text-xs mt-0.5">{t.history_desc}</p>
-                    </div>
-
-                    <div className="flex items-center space-x-3 shrink-0">
-                      <button
-                        onClick={exportFullCsvLogs}
-                        disabled={historyItems.length === 0}
-                        className="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-xl py-2 px-3.5 text-xs font-bold flex items-center gap-2 disabled:opacity-45 disabled:pointer-events-none transition cursor-pointer"
-                      >
-                        <Download className="h-4 w-4 text-emerald-400" />
-                        {t.history_export_all_csv}
-                      </button>
-
-                      <button
-                        onClick={handleClearAllHistory}
-                        disabled={historyItems.length === 0}
-                        className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/25 text-red-400 rounded-xl py-2 px-3.5 text-xs font-bold flex items-center gap-2 disabled:opacity-45 disabled:pointer-events-none transition cursor-pointer"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        {t.history_clear}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* SECTION 1: ELEVENLABS CLOUD HISTORY SYNC */}
-                  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 space-y-4">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-3">
-                      <CloudLightning className="h-4.5 w-4.5 text-emerald-400 animate-pulse" />
-                      <span>ElevenLabs Cloud Saved History Logs</span>
-                      {loadingCloudHistory && <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-400 ml-1" />}
-                    </h3>
-
-                    {cloudHistory.length === 0 ? (
-                      <p className="text-[11px] text-slate-500 italic">No cloud items logged or API key not fully synchronized.</p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
-                          <thead>
-                            <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                              <th className="py-2.5 px-2">Date</th>
-                              <th className="py-2.5 px-2">Voice Name</th>
-                              <th className="py-2.5 px-2">Model</th>
-                              <th className="py-2.5 px-2">Text Output Snippet</th>
-                              <th className="py-2.5 px-2 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {cloudHistory.slice(0, 8).map((item) => (
-                              <tr key={item.history_item_id} className="border-b border-slate-850 hover:bg-slate-950/40 transition">
-                                <td className="py-2 px-2 text-slate-400">{new Date(item.date_unix * 1000).toLocaleDateString()}</td>
-                                <td className="py-2 px-2 font-bold text-emerald-400">{item.voice_name || 'N/A'}</td>
-                                <td className="py-2 px-2 text-slate-300 font-mono text-[10px]">{item.model_id}</td>
-                                <td className="py-2 px-2 text-slate-400 max-w-xs truncate">{item.text}</td>
-                                <td className="py-2 px-2 text-right space-x-2">
-                                  <audio
-                                    src={`/api/history/${item.history_item_id}/audio`}
-                                    controls
-                                    className="inline-block h-6 max-w-[120px] accent-emerald-500 align-middle mr-2"
-                                  />
-                                  <button
-                                    onClick={() => handleDeleteCloudHistoryItem(item.history_item_id)}
-                                    className="p-1 text-red-500 hover:text-red-400 transition cursor-pointer inline-block align-middle"
-                                    title="Delete from Cloud"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Filter controls log bar */}
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                    {/* Search field */}
-                    <div className="relative md:col-span-2">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                      <input
-                        type="text"
-                        value={historySearch}
-                        onChange={(e) => setHistorySearch(e.target.value)}
-                        placeholder={t.history_search_placeholder}
-                        className="w-full bg-slate-950 border border-slate-850 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition"
-                      />
-                    </div>
-
-                    {/* Filter models */}
-                    <div>
-                      <select
-                        value={historyModelFilter}
-                        onChange={(e) => setHistoryModelFilter(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 transition cursor-pointer"
-                      >
-                        <option value="all">{t.all_models}</option>
-                        {models.map(m => (
-                          <option key={m.model_id} value={m.model_id}>{m.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Filter voices */}
-                    <div>
-                      <select
-                        value={historyVoiceFilter}
-                        onChange={(e) => setHistoryVoiceFilter(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 transition cursor-pointer"
-                      >
-                        <option value="all">{t.all_voices}</option>
-                        {voices.map(v => (
-                          <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Local evaluation records list */}
-                  {filteredHistory.length === 0 ? (
-                    <div className="bg-slate-900 border border-slate-850 rounded-2xl p-10 text-center space-y-3">
-                      <HelpCircle className="h-10 w-10 text-slate-600 mx-auto" />
-                      <h4 className="text-xs font-bold text-slate-400">{t.no_history_title}</h4>
-                      <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                        {t.no_history_desc}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {filteredHistory.map((item) => (
-                        <div key={item.id} className="bg-slate-900 border border-slate-800 hover:border-slate-750 rounded-2xl p-5 space-y-4 transition">
-                          
-                          {/* Log stats info header */}
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 text-[10px] text-slate-400 rounded-md">
-                                {new Date(item.timestamp).toLocaleString()}
-                              </span>
-                              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold rounded-md">
-                                {item.voice_name}
-                              </span>
-                              <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-semibold rounded-md">
-                                {item.model_name}
-                              </span>
-                              <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 text-[10px] text-slate-400 rounded-md font-bold uppercase">
-                                {item.source === 'sts' ? t.history_source_sts : item.source === 'design' ? t.history_source_design : t.history_source_tts}
-                              </span>
-                              <span className="text-[10px] text-slate-500 font-medium">
-                                {t.latency}: <strong className="text-slate-300">{item.latency || 'N/A'}ms</strong>
-                              </span>
-                              <span className="text-[10px] text-slate-500 font-medium">
-                                {t.size}: <strong className="text-slate-300">{item.fileSize || 'N/A'} KB</strong>
-                              </span>
-                            </div>
-
-                            <div className="flex items-center space-x-3 self-end md:self-auto">
-                              {item.audioUrl && (
-                                <a
-                                  href={item.audioUrl}
-                                  download={`elevenlabs-history-${item.id}.mp3`}
-                                  className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1 font-bold"
-                                >
-                                  <Download className="h-3.5 w-3.5 text-emerald-400" />
-                                  {t.history_saved_file}
-                                </a>
-                              )}
-                              <button
-                                onClick={() => handleDeleteHistoryItem(item.id)}
-                                className="text-xs text-red-500/80 hover:text-red-450 transition flex items-center gap-1 cursor-pointer font-bold"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                {t.history_remove}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Row 2: Prompts and Config specifications */}
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                            <div className="lg:col-span-2 space-y-2">
-                              <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t.history_prompt_text}</span>
-                              <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/40 p-3 rounded-xl border border-slate-850/50">
-                                {item.text}
-                              </p>
-                            </div>
-
-                            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-850/60 space-y-1.5 text-[11px] self-start">
-                              <span className="block text-[10px] font-bold text-slate-500 uppercase mb-2">{t.history_config_snapshot}</span>
-                              <div className="flex justify-between text-slate-300">
-                                <span>Stability:</span>
-                                <span className="font-semibold">{item.voice_settings.stability}%</span>
-                              </div>
-                              <div className="flex justify-between text-slate-300">
-                                <span>Clarity Boost:</span>
-                                <span className="font-semibold">{item.voice_settings.similarity_boost}%</span>
-                              </div>
-                              <div className="flex justify-between text-slate-300">
-                                <span>Style:</span>
-                                <span className="font-semibold">{item.voice_settings.style}%</span>
-                              </div>
-                              <div className="flex justify-between text-slate-300">
-                                <span>Speaker Boost:</span>
-                                <span className="font-semibold text-emerald-400">{item.voice_settings.use_speaker_boost ? 'ON' : 'OFF'}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Players & comments forms row */}
-                          <div className="flex flex-col md:flex-row items-center gap-4 bg-slate-950/60 p-3 rounded-xl border border-slate-850/40">
-                            <div className="w-full md:w-1/3 min-w-[200px]">
-                              {item.audioUrl ? (
-                                <audio src={item.audioUrl} controls className="w-full h-8 accent-emerald-500" />
-                              ) : (
-                                <span className="text-xs text-slate-600">{t.history_no_cache}</span>
-                              )}
-                            </div>
-
-                            <div className="hidden md:block w-px h-8 bg-slate-800" />
-
-                            <div className="w-full md:flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                              {/* Evaluation Score */}
-                              <div className="flex items-center space-x-2">
-                                <span className="text-[11px] font-extrabold text-slate-400 uppercase shrink-0">{t.history_rating_label}</span>
-                                <div className="flex items-center space-x-1">
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <button
-                                      key={star}
-                                      onClick={() => handleUpdateRating(item.id, star)}
-                                      className="transition hover:scale-110 cursor-pointer"
-                                    >
-                                      <Star
-                                        className={`h-4.5 w-4.5 ${
-                                          star <= item.rating
-                                            ? 'fill-emerald-400 text-emerald-400'
-                                            : 'text-slate-750 hover:text-slate-400'
-                                        }`}
-                                      />
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Commentary Feedback */}
-                              <div className="flex items-center space-x-2 w-full">
-                                <MessageSquare className="h-4 w-4 text-slate-500 shrink-0" />
-                                <input
-                                  type="text"
-                                  value={item.comment}
-                                  onChange={(e) => handleUpdateComment(item.id, e.target.value)}
-                                  placeholder={t.history_feedback_placeholder}
-                                  className="w-full bg-slate-950 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 transition"
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <HistoryTaskCenterTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                  models={models}
+                  voices={voices}
+                  historyItems={historyItems}
+                  setHistoryItems={saveHistoryToStorage}
+                  cloudHistory={cloudHistory}
+                  loadingCloudHistory={loadingCloudHistory}
+                  fetchCloudHistory={fetchCloudHistory}
+                />
               )}
             </>
           )}
