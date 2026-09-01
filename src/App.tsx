@@ -33,10 +33,28 @@ import {
   Globe,
   Save,
   CloudLightning,
-  UserCheck
+  ShieldCheck,
+  Bot,
+  CreditCard,
+  PieChart,
+  Key,
+  Wand2,
+  Scissors,
+  Film,
+  BookOpen,
+  Terminal
 } from 'lucide-react';
 import { translations } from './translations';
 import { ApiStatus, VoiceModel, Voice, VoiceSettings, HistoryItem, ComparisonResult, CloudHistoryItem, VoiceDesignParams } from './types';
+import { EnterpriseBillingTab } from './components/EnterpriseBillingTab';
+import { AgentsStudioTab } from './components/AgentsStudioTab';
+import { SoundEffectsTab } from './components/SoundEffectsTab';
+import { AudioIsolationTab } from './components/AudioIsolationTab';
+import { ScribeStudioTab } from './components/ScribeStudioTab';
+import { DubbingStudioTab } from './components/DubbingStudioTab';
+import { PronunciationTab } from './components/PronunciationTab';
+import { SharedVoiceMarketTab } from './components/SharedVoiceMarketTab';
+import { ApiWorkbenchTab } from './components/ApiWorkbenchTab';
 
 export default function App() {
   // Localization: 'zh' or 'en'
@@ -53,8 +71,39 @@ export default function App() {
     localStorage.setItem('elevenlabs_lang', nextLang);
   };
 
-  // Navigation Tabs
-  const [activeTab, setActiveTab] = useState<'tts' | 'sts' | 'cloning' | 'design' | 'library' | 'history'>('tts');
+  // 3 Major Top-Level Category Modules: 'api' | 'agents' | 'enterprise'
+  const [topCategory, setTopCategory] = useState<'api' | 'agents' | 'enterprise'>('api');
+
+  // Full Official ElevenLabs Tab Suite
+  const [activeTab, setActiveTab] = useState<
+    'workbench' | 'tts' | 'sts' | 'cloning' | 'design' | 'sfx' | 'isolation' | 'scribe' | 'dubbing' | 'dictionaries' | 'market' | 'agents' | 'enterprise' | 'library' | 'history'
+  >('workbench');
+
+  // Synchronize topCategory when activeTab changes
+  const handleSelectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    if (tab === 'agents') {
+      setTopCategory('agents');
+    } else if (tab === 'enterprise') {
+      setTopCategory('enterprise');
+    } else {
+      setTopCategory('api');
+    }
+  };
+
+  const handleSelectCategory = (cat: 'api' | 'agents' | 'enterprise') => {
+    setTopCategory(cat);
+    if (cat === 'agents') {
+      setActiveTab('agents');
+    } else if (cat === 'enterprise') {
+      setActiveTab('enterprise');
+    } else {
+      if (activeTab === 'agents' || activeTab === 'enterprise') {
+        setActiveTab('tts');
+      }
+    }
+  };
+
 
   // Core States
   const [apiStatus, setApiStatus] = useState<ApiStatus>({
@@ -993,30 +1042,70 @@ export default function App() {
   return (
     <div id="elevenlabs_app_container" className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-slate-900">
       
-      {/* TOP HEADER BAR */}
-      <header id="header_section" className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+      {/* TOP HEADER BAR (GLASSMORPHIC) */}
+      <header id="header_section" className="border-b border-purple-500/20 bg-slate-950/60 backdrop-blur-xl sticky top-0 z-40 px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-purple-950/20">
         <div className="flex items-center space-x-3 w-full sm:w-auto">
-          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+          <div className="p-2.5 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-400/30 rounded-2xl text-purple-300 shadow-inner">
             <Volume2 className="h-6 w-6 animate-pulse" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              ElevenLabs <span className="text-emerald-400 text-xs font-semibold px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md">VOICE LAB</span>
+            <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+              <span>ElevenLabs</span>
+              <span className="text-purple-300 text-[10px] font-bold px-2 py-0.5 bg-purple-500/15 border border-purple-400/30 rounded-full">STUDIO MATRIX</span>
             </h1>
-            <p className="text-xs text-slate-400">{t.subtitle}</p>
+            <p className="text-xs text-slate-400 font-light">{t.subtitle}</p>
           </div>
         </div>
 
+        {/* 3 MAJOR TOP-LEVEL CATEGORIES NAVIGATION (GLASS PILL BAR) */}
+        <div className="flex items-center p-1 bg-slate-900/70 border border-purple-500/25 rounded-2xl backdrop-blur-md shadow-inner">
+          <button
+            onClick={() => handleSelectCategory('api')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              topCategory === 'api'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40 border border-purple-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+            }`}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>{t.cat_api}</span>
+          </button>
+
+          <button
+            onClick={() => handleSelectCategory('agents')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              topCategory === 'agents'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40 border border-purple-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+            }`}
+          >
+            <Bot className="h-3.5 w-3.5" />
+            <span>{t.cat_agents}</span>
+          </button>
+
+          <button
+            onClick={() => handleSelectCategory('enterprise')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              topCategory === 'enterprise'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40 border border-purple-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+            }`}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>{t.cat_enterprise}</span>
+          </button>
+        </div>
+
         {/* CONTROLS AREA (LANGUAGE SELECTOR & API STATUS) */}
-        <div className="flex items-center space-x-3 shrink-0 self-end sm:self-auto">
+        <div className="flex items-center space-x-2.5 shrink-0 self-end sm:self-auto">
           {/* Bilingual Toggle Button */}
           <button
             id="lang_toggle_btn"
             onClick={toggleLanguage}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-bold transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/60 hover:bg-purple-900/20 border border-purple-500/20 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all backdrop-blur-sm"
             title="Switch Language / 切换双语"
           >
-            <Globe className="h-3.5 w-3.5 text-emerald-400" />
+            <Globe className="h-3.5 w-3.5 text-purple-400" />
             <span>{language === 'zh' ? 'English' : '中文'}</span>
           </button>
 
@@ -1028,25 +1117,35 @@ export default function App() {
               setTempBaseUrl(customBaseUrl);
               setTempApiKey(customApiKey);
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border backdrop-blur-sm ${
               showSettings || customBaseUrl || customApiKey
-                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20'
-                : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200 hover:text-white'
+                ? 'bg-purple-500/15 border-purple-400/50 text-purple-300 hover:bg-purple-500/25'
+                : 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:text-white'
             }`}
             title="Custom API & Key Settings / 自定义接口配置"
           >
             <Settings className="h-3.5 w-3.5" />
-            <span>{language === 'zh' ? 'API 测试' : 'API Settings'}</span>
+            <span>{language === 'zh' ? '配置 Key' : 'API Keys'}</span>
             {(customBaseUrl || customApiKey) && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping ml-0.5" />
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping ml-0.5" />
             )}
           </button>
 
-          {/* API Status Badge */}
-          <div className="flex items-center space-x-2 bg-slate-950/60 py-1.5 px-3.5 border border-slate-800 rounded-lg text-xs">
-            <div className={`h-2 w-2 rounded-full ${apiStatus.configured ? 'bg-emerald-500 shadow-emerald-500/50 shadow' : 'bg-amber-500 shadow-amber-500/50 shadow'} animate-pulse`} />
+          {/* API Status Badge with Mode Differentiation */}
+          <div className="flex items-center space-x-2 bg-slate-950/70 py-1.5 px-3 border border-purple-500/20 rounded-xl text-xs backdrop-blur-sm">
+            <div className={`h-2 w-2 rounded-full ${
+              customBaseUrl
+                ? 'bg-indigo-400 shadow-indigo-500/50 shadow'
+                : apiStatus.configured
+                ? 'bg-purple-400 shadow-purple-500/50 shadow'
+                : 'bg-amber-400 shadow-amber-500/50 shadow'
+            } animate-pulse`} />
             <span className="font-semibold text-slate-300">
-              {apiStatus.configured ? t.api_active : t.simulator_active}
+              {customBaseUrl
+                ? t.mode_custom_proxy
+                : apiStatus.configured
+                ? t.mode_official_direct
+                : t.simulator_active}
             </span>
           </div>
         </div>
@@ -1054,12 +1153,12 @@ export default function App() {
 
       {/* CUSTOM CONFIGURATION PANEL (TESTING BOX) */}
       {showSettings && (
-        <div id="custom_config_panel" className="bg-slate-900 border-b border-slate-800 p-6 shadow-inner transition-all duration-200 animate-in fade-in slide-in-from-top-4">
+        <div id="custom_config_panel" className="bg-slate-950/85 backdrop-blur-2xl border-b border-purple-500/30 p-6 shadow-2xl transition-all duration-200 animate-in fade-in slide-in-from-top-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Settings className="h-4 w-4 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Key className="h-4 w-4 text-purple-400" />
                   {t.custom_config_title}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
@@ -1069,7 +1168,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowSettings(false)}
-                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                className="p-1 hover:bg-purple-900/30 rounded-lg text-slate-400 hover:text-white transition-colors"
                 title="Close / 关闭"
               >
                 <X className="h-4 w-4" />
@@ -1077,17 +1176,17 @@ export default function App() {
             </div>
 
             {settingsSuccessMessage && (
-              <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-400 font-medium">
+              <div className="mb-4 p-3 bg-purple-500/15 border border-purple-500/30 rounded-xl text-xs text-purple-300 font-medium">
                 {settingsSuccessMessage}
               </div>
             )}
 
             <form onSubmit={handleSaveConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <span>{t.custom_url_label}</span>
                   {(customBaseUrl || tempBaseUrl) && (
-                    <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 font-mono">
+                    <span className="text-[10px] bg-slate-900 px-1.5 py-0.5 rounded text-purple-300 font-mono border border-purple-500/20">
                       {tempBaseUrl ? 'Customized' : 'Default'}
                     </span>
                   )}
@@ -1097,15 +1196,15 @@ export default function App() {
                   value={tempBaseUrl}
                   onChange={(e) => setTempBaseUrl(e.target.value)}
                   placeholder={t.custom_url_placeholder}
-                  className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                  className="w-full text-xs bg-slate-900/70 border border-purple-500/20 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
                   <span>{t.custom_key_label}</span>
                   {tempApiKey && (
-                    <span className="text-[10px] text-emerald-400 font-semibold px-1.5 py-0.5 bg-emerald-500/10 rounded">
+                    <span className="text-[10px] text-purple-300 font-semibold px-2 py-0.5 bg-purple-500/15 border border-purple-400/30 rounded-full">
                       xi-api-key Active
                     </span>
                   )}
@@ -1115,14 +1214,14 @@ export default function App() {
                   value={tempApiKey}
                   onChange={(e) => setTempApiKey(e.target.value)}
                   placeholder={t.custom_key_placeholder}
-                  className="w-full text-xs bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                  className="w-full text-xs bg-slate-900/70 border border-purple-500/20 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-400 font-mono"
                 />
               </div>
 
-              <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 mt-2 pt-4 border-t border-slate-800/60">
-                <div className="text-[10px] text-slate-500">
+              <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 mt-2 pt-4 border-t border-purple-500/20">
+                <div className="text-[10px] text-slate-400">
                   {language === 'zh' 
-                    ? '* 本地调试直接使用内存与 LocalStorage 缓存密钥，绝对安全，绝不上传第三方服务器。' 
+                    ? '* 本地填入的密钥仅保存在当前浏览器的 LocalStorage 中，服务端代理转发至官方接口，绝不泄露。' 
                     : '* Configurations are stored in LocalStorage & local context. Credentials will not be exposed.'}
                 </div>
                 <div className="flex items-center space-x-3">
@@ -1130,14 +1229,14 @@ export default function App() {
                     <button
                       type="button"
                       onClick={handleResetConfig}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-colors border border-slate-700/60"
+                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-medium transition-colors border border-slate-700/60"
                     >
                       {t.btn_reset_config}
                     </button>
                   )}
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-slate-950 font-bold rounded-lg text-xs transition-colors shadow-lg shadow-emerald-900/10"
+                    className="px-4 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs transition-colors shadow-lg shadow-purple-900/30"
                   >
                     {t.btn_save_config}
                   </button>
@@ -1150,9 +1249,9 @@ export default function App() {
 
       {/* DETAILED INFORMATION AND BANNER FOR SIMULATOR MODE */}
       {!apiStatus.configured && (
-        <div id="simulator_banner" className="bg-amber-950/25 border-b border-amber-500/20 px-6 py-3.5 text-xs text-amber-200/90 flex items-center justify-between">
+        <div id="simulator_banner" className="bg-purple-950/20 border-b border-purple-500/20 px-6 py-3 text-xs text-purple-200/90 flex items-center justify-between backdrop-blur-sm">
           <div className="flex items-start space-x-2.5">
-            <AlertCircle className="h-4.5 w-4.5 text-amber-400 shrink-0 mt-0.5" />
+            <AlertCircle className="h-4.5 w-4.5 text-purple-400 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
               <strong>{t.simulator_warning_title}</strong> {t.simulator_warning_body}
             </p>
@@ -1164,99 +1263,261 @@ export default function App() {
       <div id="core_workspace" className="flex-1 flex flex-col lg:flex-row">
         
         {/* SIDE BAR NAVIGATION */}
-        <aside id="sidebar_nav" className="w-full lg:w-72 bg-slate-900/40 border-r border-slate-800 p-4 lg:p-5 space-y-2 flex-shrink-0">
-          <p className="text-[10px] font-bold text-slate-500 tracking-wider uppercase px-2 mb-2">
-            {language === 'zh' ? '功能评估模块' : 'Evaluation Modules'}
-          </p>
-          
-          {/* Tab Button 1: TTS & Compare */}
-          <button
-            id="tab_btn_tts"
-            onClick={() => setActiveTab('tts')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === 'tts'
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent'
-            }`}
-          >
-            <SlidersHorizontal className="h-4 w-4 shrink-0" />
-            <span>{t.tab_tts}</span>
-          </button>
-
-          {/* Tab Button 2: Speech-to-Speech */}
-          <button
-            id="tab_btn_sts"
-            onClick={() => setActiveTab('sts')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === 'sts'
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent'
-            }`}
-          >
-            <CloudLightning className="h-4 w-4 shrink-0" />
-            <span>{t.tab_sts}</span>
-          </button>
-
-          {/* Tab Button 3: Voice Cloning */}
-          <button
-            id="tab_btn_cloning"
-            onClick={() => setActiveTab('cloning')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === 'cloning'
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent'
-            }`}
-          >
-            <Mic className="h-4 w-4 shrink-0" />
-            <span>{t.tab_cloning}</span>
-          </button>
-
-          {/* Tab Button 4: Voice Design */}
-          <button
-            id="tab_btn_design"
-            onClick={() => setActiveTab('design')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === 'design'
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent'
-            }`}
-          >
-            <Sparkles className="h-4 w-4 shrink-0" />
-            <span>{t.tab_design}</span>
-          </button>
-
-          {/* Tab Button 5: Voice Library */}
-          <button
-            id="tab_btn_library"
-            onClick={() => setActiveTab('library')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === 'library'
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent'
-            }`}
-          >
-            <Layers className="h-4 w-4 shrink-0" />
-            <span>{t.tab_library}</span>
-          </button>
-
-          {/* Tab Button 6: Evaluation logs & history */}
-          <button
-            id="tab_btn_history"
-            onClick={() => setActiveTab('history')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all relative ${
-              activeTab === 'history'
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent'
-            }`}
-          >
-            <History className="h-4 w-4 shrink-0" />
-            <span>{t.tab_history}</span>
-            {historyItems.length > 0 && (
-              <span className="absolute right-3.5 top-3 px-1.5 py-0.5 text-[9px] font-extrabold bg-slate-800 text-slate-300 rounded-full">
-                {historyItems.length}
+        <aside id="sidebar_nav" className="w-full lg:w-72 bg-slate-950/40 backdrop-blur-xl border-r border-purple-500/15 p-4 lg:p-5 space-y-4 flex-shrink-0">
+          {/* Active Category Indicator Banner */}
+          <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-900/20 to-indigo-950/30 border border-purple-500/25 text-xs">
+            <span className="text-[10px] font-bold text-purple-400 tracking-wider uppercase block mb-1">
+              {language === 'zh' ? '当前核心架构分区' : 'Current Category Domain'}
+            </span>
+            <div className="font-bold text-white flex items-center gap-1.5">
+              {topCategory === 'api' && <SlidersHorizontal className="h-4 w-4 text-purple-400" />}
+              {topCategory === 'agents' && <Bot className="h-4 w-4 text-purple-400" />}
+              {topCategory === 'enterprise' && <ShieldCheck className="h-4 w-4 text-purple-400" />}
+              <span>
+                {topCategory === 'api' ? t.cat_api : topCategory === 'agents' ? t.cat_agents : t.cat_enterprise}
               </span>
-            )}
-          </button>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1 leading-normal font-light">
+              {topCategory === 'api' ? t.cat_api_desc : topCategory === 'agents' ? t.cat_agents_desc : t.cat_enterprise_desc}
+            </p>
+          </div>
+
+          {/* Sub-Tabs under Category 1: API */}
+          {topCategory === 'api' && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold text-slate-500 tracking-wider uppercase px-2 mb-1">
+                {language === 'zh' ? '开发者套件 & 核心生成' : 'Developer & Audio APIs'}
+              </p>
+
+              {/* Tab Button 0: API Developer Workbench */}
+              <button
+                id="tab_btn_workbench"
+                onClick={() => handleSelectTab('workbench')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'workbench'
+                    ? 'bg-purple-500/20 text-purple-200 border border-purple-400/40 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <Terminal className="h-4 w-4 shrink-0 text-purple-400" />
+                <span>{t.tab_workbench}</span>
+              </button>
+
+              {/* Tab Button 1: TTS & Compare */}
+              <button
+                id="tab_btn_tts"
+                onClick={() => handleSelectTab('tts')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'tts'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                <span>{t.tab_tts}</span>
+              </button>
+
+              {/* Tab Button 2: Speech-to-Speech */}
+              <button
+                id="tab_btn_sts"
+                onClick={() => handleSelectTab('sts')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'sts'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <CloudLightning className="h-4 w-4 shrink-0" />
+                <span>{t.tab_sts}</span>
+              </button>
+
+              {/* Tab Button 3: Voice Cloning */}
+              <button
+                id="tab_btn_cloning"
+                onClick={() => handleSelectTab('cloning')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'cloning'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <Mic className="h-4 w-4 shrink-0" />
+                <span>{t.tab_cloning}</span>
+              </button>
+
+              {/* Tab Button 4: Voice Design */}
+              <button
+                id="tab_btn_design"
+                onClick={() => handleSelectTab('design')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'design'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <Sparkles className="h-4 w-4 shrink-0" />
+                <span>{t.tab_design}</span>
+              </button>
+
+              {/* Tab Button: Sound Effects Studio */}
+              <button
+                id="tab_btn_sfx"
+                onClick={() => handleSelectTab('sfx')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'sfx'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <Wand2 className="h-4 w-4 shrink-0" />
+                <span>{t.tab_sfx}</span>
+              </button>
+
+              <p className="text-[10px] font-bold text-slate-500 tracking-wider uppercase px-2 pt-3 mb-1">
+                {language === 'zh' ? '处理与生产套件' : 'Processing & Production'}
+              </p>
+
+              {/* Tab Button: Audio Isolation */}
+              <button
+                id="tab_btn_isolation"
+                onClick={() => handleSelectTab('isolation')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'isolation'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <Scissors className="h-4 w-4 shrink-0" />
+                <span>{t.tab_isolation}</span>
+              </button>
+
+              {/* Tab Button: Scribe STT */}
+              <button
+                id="tab_btn_scribe"
+                onClick={() => handleSelectTab('scribe')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'scribe'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <FileText className="h-4 w-4 shrink-0" />
+                <span>{t.tab_scribe}</span>
+              </button>
+
+              {/* Tab Button: Dubbing Studio */}
+              <button
+                id="tab_btn_dubbing"
+                onClick={() => handleSelectTab('dubbing')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'dubbing'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <Film className="h-4 w-4 shrink-0" />
+                <span>{t.tab_dubbing}</span>
+              </button>
+
+              {/* Tab Button: Pronunciation Dictionaries */}
+              <button
+                id="tab_btn_dictionaries"
+                onClick={() => handleSelectTab('dictionaries')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'dictionaries'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <BookOpen className="h-4 w-4 shrink-0" />
+                <span>{t.tab_dictionaries}</span>
+              </button>
+
+              {/* Tab Button: Shared Voice Market */}
+              <button
+                id="tab_btn_market"
+                onClick={() => handleSelectTab('market')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'market'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <Globe className="h-4 w-4 shrink-0" />
+                <span>{t.tab_market}</span>
+              </button>
+
+              {/* Tab Button: Voice Library */}
+              <button
+                id="tab_btn_library"
+                onClick={() => handleSelectTab('library')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'library'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <Layers className="h-4 w-4 shrink-0" />
+                <span>{t.tab_library}</span>
+              </button>
+
+              {/* Tab Button: Evaluation logs & history */}
+              <button
+                id="tab_btn_history"
+                onClick={() => handleSelectTab('history')}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all relative ${
+                  activeTab === 'history'
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold'
+                    : 'text-slate-400 hover:bg-purple-950/20 hover:text-white border border-transparent'
+                }`}
+              >
+                <History className="h-4 w-4 shrink-0" />
+                <span>{t.tab_history}</span>
+                {historyItems.length > 0 && (
+                  <span className="absolute right-3.5 top-2.5 px-1.5 py-0.5 text-[9px] font-extrabold bg-purple-500/30 text-purple-200 rounded-full border border-purple-400/40">
+                    {historyItems.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Sub-Tabs under Category 2: Agents */}
+          {topCategory === 'agents' && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold text-slate-500 tracking-wider uppercase px-2 mb-1">
+                {language === 'zh' ? 'Conversational AI 模块' : 'Conversational Modules'}
+              </p>
+
+              <button
+                id="tab_btn_agents"
+                onClick={() => handleSelectTab('agents')}
+                className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold"
+              >
+                <Bot className="h-4 w-4 shrink-0" />
+                <span>{t.tab_agents}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Sub-Tabs under Category 3: Enterprise */}
+          {topCategory === 'enterprise' && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold text-slate-500 tracking-wider uppercase px-2 mb-1">
+                {language === 'zh' ? '企业管理模块' : 'Management Modules'}
+              </p>
+
+              <button
+                id="tab_btn_enterprise"
+                onClick={() => handleSelectTab('enterprise')}
+                className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-purple-500/15 text-purple-300 border border-purple-400/30 shadow-md shadow-purple-950/30 font-bold"
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span>{t.tab_enterprise}</span>
+              </button>
+            </div>
+          )}
+
 
           <div className="pt-6 border-t border-slate-800 mt-6 space-y-4">
             <p className="text-[10px] font-bold text-slate-500 tracking-wider uppercase px-2">
@@ -1299,6 +1560,18 @@ export default function App() {
             </div>
           ) : (
             <>
+              {/* TAB: DEVELOPER API WORKBENCH & CORE SCAFFOLDING */}
+              {activeTab === 'workbench' && (
+                <ApiWorkbenchTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                  apiStatus={apiStatus}
+                  voices={voices}
+                  models={models}
+                />
+              )}
+
               {/* TAB 1: TEXT-TO-SPEECH & COMPONENT MATRIX */}
               {activeTab === 'tts' && (
                 <div className="space-y-6">
@@ -2297,6 +2570,89 @@ export default function App() {
                   )}
                 </div>
               )}
+
+              {/* TAB: AI SOUND EFFECTS STUDIO */}
+              {activeTab === 'sfx' && (
+                <SoundEffectsTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                />
+              )}
+
+              {/* TAB: AUDIO ISOLATION & NOISE REDUCTION */}
+              {activeTab === 'isolation' && (
+                <AudioIsolationTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                />
+              )}
+
+              {/* TAB: SCRIBE SPEECH TO TEXT */}
+              {activeTab === 'scribe' && (
+                <ScribeStudioTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                />
+              )}
+
+              {/* TAB: MULTILINGUAL DUBBING STUDIO */}
+              {activeTab === 'dubbing' && (
+                <DubbingStudioTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                />
+              )}
+
+              {/* TAB: PRONUNCIATION DICTIONARIES */}
+              {activeTab === 'dictionaries' && (
+                <PronunciationTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                />
+              )}
+
+              {/* TAB: GLOBAL SHARED VOICE MARKETPLACE */}
+              {activeTab === 'market' && (
+                <SharedVoiceMarketTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                  onImportVoice={(newVoice) => {
+                    setVoices(prev => {
+                      if (prev.some(v => v.voice_id === newVoice.voice_id)) return prev;
+                      return [newVoice, ...prev];
+                    });
+                  }}
+                />
+              )}
+
+              {/* TAB: CONVERSATIONAL AI AGENTS STUDIO */}
+              {activeTab === 'agents' && (
+                <AgentsStudioTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                  voices={voices}
+                  models={models}
+                />
+              )}
+
+              {/* TAB: ENTERPRISE GOVERNANCE & BILLING ATTRIBUTION */}
+              {activeTab === 'enterprise' && (
+                <EnterpriseBillingTab
+                  language={language}
+                  t={t}
+                  apiFetch={apiFetch}
+                  apiStatus={apiStatus}
+                  onOpenSettings={() => setShowSettings(true)}
+                />
+              )}
+
 
               {/* TAB 5: ACOUSTIC VOICE LIBRARY & PRESETS */}
               {activeTab === 'library' && (
