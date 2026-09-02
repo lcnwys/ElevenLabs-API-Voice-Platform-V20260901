@@ -63,6 +63,7 @@ import {
   WorkspaceGroup,
   WorkspaceWebhook,
   EnterpriseAuditLogItem,
+  AnalyticsTable,
   PvcSlotsOverview,
   PvcSlot
 } from '../types';
@@ -220,7 +221,9 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
   // Cost Attribution Items
   const [costItems, setCostItems] = useState<CostAttributionItem[]>([]);
 
-  const [totalCostUsd, setTotalCostUsd] = useState(0);
+  const [totalCostUsd, setTotalCostUsd] = useState<number | null>(null);
+  const [usageAnalytics, setUsageAnalytics] = useState<AnalyticsTable | null>(null);
+  const [requestAnalytics, setRequestAnalytics] = useState<AnalyticsTable | null>(null);
 
   // API Keys state
   const [apiKeys, setApiKeys] = useState<ServiceApiKey[]>([]);
@@ -283,7 +286,9 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
     try {
       setRefreshing(true);
       setCostItems([]);
-      setTotalCostUsd(0);
+      setTotalCostUsd(null);
+      setUsageAnalytics(null);
+      setRequestAnalytics(null);
       setApiKeys([]);
       setMembers([]);
       setGroups([]);
@@ -300,17 +305,19 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
         }
       }
 
-      // 2. Cost Attribution Breakdown
-      const costRes = await apiFetch('/api/billing-breakdown');
-      if (costRes.ok) {
-        const costData = await costRes.json();
-        if (Array.isArray(costData.breakdown)) {
-          setCostItems(costData.breakdown);
-        }
-        if (typeof costData.total_cost_usd === 'number') {
-          setTotalCostUsd(costData.total_cost_usd);
-        }
-      }
+      // 2. Official workspace analytics. These endpoints report usage/activity,
+      // not invoice line-item prices.
+      const now = Date.now();
+      const periodStart = new Date();
+      periodStart.setUTCDate(1);
+      periodStart.setUTCHours(0, 0, 0, 0);
+      const analyticsBody = { start_time: periodStart.getTime(), end_time: now, interval_seconds: 86400 };
+      const [usageRes, requestsRes] = await Promise.all([
+        apiFetch('/api/analytics/usage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(analyticsBody) }),
+        apiFetch('/api/analytics/requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...analyticsBody, limit: 100, sort: 'desc' }) })
+      ]);
+      if (usageRes.ok) setUsageAnalytics(await usageRes.json());
+      if (requestsRes.ok) setRequestAnalytics(await requestsRes.json());
 
       // 3. API Keys
       const keysRes = await apiFetch('/api/workspace/keys');
@@ -353,8 +360,19 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       const auditRes = await apiFetch('/api/workspace/audit-logs');
       if (auditRes.ok) {
         const auditData = await auditRes.json();
-        if (Array.isArray(auditData.logs)) {
-          setAuditLogs(auditData.logs);
+        if (Array.isArray(auditData.entries)) {
+          setAuditLogs(auditData.entries.map((entry: any) => ({
+            id: entry.id || entry.activity_id || JSON.stringify(entry),
+            timestamp: entry.time_dt || entry.timestamp || '—',
+            actor: entry.actor?.user?.email_addr || entry.actor?.user?.user_id || entry.actor?.email || '—',
+            action: entry.activity_name || entry.type_name || '—',
+            category: 'API Key',
+            details: entry.message || entry.metadata?.description || entry.type_name || '—',
+            characters: 0,
+            cost_usd: 0,
+            ip_address: entry.device?.ip || entry.metadata?.ip_address || '—',
+            status: 'success'
+          })));
         }
       }
 
@@ -384,7 +402,7 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       setQuickKeyMsg(language === 'zh' ? '已保存 API Key！正在连接 ElevenLabs 官方接口获取实时数据...' : 'API Key saved! Connecting to ElevenLabs live data...');
     } else {
       localStorage.removeItem('elevenlabs_custom_api_key');
-      setQuickKeyMsg(language === 'zh' ? '已清除自定义 Key，已回退为系统环境默认/评估模拟器模式' : 'Cleared custom key.');
+      setQuickKeyMsg(language === 'zh' ? '已清除自定义 Key，将使用系统环境中的官方 API 配置。' : 'Cleared custom key; the official API configuration from the server environment will be used.');
     }
     setQuickKeySaving(true);
     setTimeout(() => {
@@ -457,14 +475,15 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
   };
 
   const handleExportCostCsv = () => {
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      ["Department,Category,Model,CharactersUsed,Invocations,CostUSD,Percentage",
-        ...costItems.map(c => `"${c.department}","${c.category}","${c.model_name || c.model_id}",${c.characters},${c.invocations || 0},${c.cost_usd},${c.percentage}%`)
-      ].join("\n");
+    const rows = usageAnalytics?.rows || [];
+    const csvContent = "data:text/csv;charset=utf-8," + [
+      (usageAnalytics?.columns || []).join(','),
+      ...rows.map(row => row.map(value => JSON.stringify(value ?? '')).join(','))
+    ].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `elevenlabs_cost_attribution_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `elevenlabs_official_usage_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -513,10 +532,12 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
   const calculatedQuotaPct = subscription?.character_limit ? ((calculatedCredits / subscription.character_limit) * 100).toFixed(2) : '0';
 
   // Quota percentage for subscription
-  const usedChars = subscription?.character_count ?? 652400;
-  const limitChars = subscription?.character_limit ?? 1810000;
-  const remainingChars = Math.max(0, limitChars - usedChars);
-  const usagePercentage = limitChars > 0 ? Math.min(100, Math.round((usedChars / limitChars) * 100)) : 0;
+  const usedChars = subscription?.character_count ?? null;
+  const limitChars = subscription?.character_limit ?? null;
+  const remainingChars = usedChars !== null && limitChars !== null ? Math.max(0, limitChars - usedChars) : null;
+  const usagePercentage = usedChars !== null && limitChars && limitChars > 0 ? Math.min(100, Math.round((usedChars / limitChars) * 100)) : null;
+  const overageAmount = subscription?.current_overage?.amount;
+  const resetDate = subscription?.next_character_count_reset_unix ? new Date(subscription.next_character_count_reset_unix * 1000).toLocaleDateString() : '—';
 
   return (
     <div id="enterprise_billing_container" className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-200">
@@ -530,7 +551,7 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
                 {language === 'zh' ? 'ElevenLabs 企业管理与分账中心' : 'Enterprise Workspace & Billing'}
               </h1>
               <span className="px-2.5 py-0.5 bg-black text-white text-[11px] font-mono font-bold rounded-full uppercase">
-                {subscription?.tier ? `${subscription.tier.toUpperCase()} PLAN` : 'SCALE PLAN'}
+                {subscription?.tier ? `${subscription.tier.toUpperCase()} PLAN` : '—'}
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-1 max-w-3xl">
@@ -664,10 +685,10 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
               </span>
             </div>
             <div className="text-lg font-bold text-gray-900 mt-1 capitalize">
-              {subscription?.tier || 'Scale'} Plan
+              {subscription?.tier ? `${subscription.tier} Plan` : '—'}
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
-              ${subscription?.plan_base_fee_usd || 299} / {language === 'zh' ? '月 (基础月费)' : 'mo base'}
+              {language === 'zh' ? '官方订阅状态' : 'Official subscription status'}
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
@@ -682,22 +703,22 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500 font-medium">{language === 'zh' ? '月度 Credit 额度消耗' : 'Monthly Credits'}</span>
               <span className="text-[10px] font-mono font-bold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">
-                {usagePercentage}%
+                {usagePercentage === null ? '—' : `${usagePercentage}%`}
               </span>
             </div>
             <div className="text-lg font-bold text-gray-900 mt-1 font-mono tracking-tight">
-              {usedChars.toLocaleString()} <span className="text-xs text-gray-400 font-normal">/ {limitChars.toLocaleString()}</span>
+              {usedChars === null ? '—' : usedChars.toLocaleString()} <span className="text-xs text-gray-400 font-normal">/ {limitChars === null ? '—' : limitChars.toLocaleString()}</span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
               <div 
-                className={`h-full rounded-full transition-all ${usagePercentage > 85 ? 'bg-amber-500' : 'bg-black'}`} 
-                style={{ width: `${usagePercentage}%` }} 
+                className={`h-full rounded-full transition-all ${usagePercentage !== null && usagePercentage > 85 ? 'bg-amber-500' : 'bg-black'}`}
+                style={{ width: `${usagePercentage ?? 0}%` }}
               />
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
             <span>{language === 'zh' ? '剩余可用 Credit' : 'Remaining Credits'}</span>
-            <span className="text-gray-900 font-mono font-semibold">{remainingChars.toLocaleString()}</span>
+            <span className="text-gray-900 font-mono font-semibold">{remainingChars === null ? '—' : remainingChars.toLocaleString()}</span>
           </div>
         </div>
 
@@ -711,13 +732,13 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
               </span>
             </div>
             <div className="text-lg font-bold text-gray-900 mt-1 font-mono">
-              {subscription?.active_concurrency ?? 12} <span className="text-xs text-gray-400 font-normal">/ {subscription?.max_concurrency ?? 30} {language === 'zh' ? '通道' : 'channels'}</span>
+              {subscription?.active_concurrency ?? '—'} <span className="text-xs text-gray-400 font-normal">/ {subscription?.max_concurrency ?? '—'} {language === 'zh' ? '通道' : 'channels'}</span>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">{language === 'zh' ? '支持高吞吐 WebSocket/TTS 流' : 'High throughput streaming'}</p>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
             <span>{language === 'zh' ? '重置周期' : 'Reset in'}</span>
-            <span className="text-gray-900 font-medium">22 {language === 'zh' ? '天后' : 'days'}</span>
+            <span className="text-gray-900 font-medium">{resetDate}</span>
           </div>
         </div>
 
@@ -729,13 +750,13 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
               <span className="text-[10px] font-mono text-gray-500 font-medium">USD</span>
             </div>
             <div className="text-lg font-bold text-gray-900 mt-1 font-mono tracking-tight">
-              ${totalCostUsd.toFixed(2)}
+              {overageAmount === undefined ? '—' : `${subscription?.currency || 'USD'} ${overageAmount}`}
             </div>
-            <p className="text-xs text-gray-500 mt-0.5">{language === 'zh' ? '含套餐底费与模型生成消耗' : 'Base plan + usage spend'}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{language === 'zh' ? '公开 API 不提供发票明细总额' : 'Invoice totals are not exposed by the public API'}</p>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
             <span>{language === 'zh' ? '超额扣费' : 'Overage fee'}</span>
-            <span className="text-emerald-600 font-mono font-medium">$0.00</span>
+            <span className="text-gray-900 font-mono font-medium">{overageAmount === undefined ? '—' : `${subscription?.currency || 'USD'} ${overageAmount}`}</span>
           </div>
         </div>
       </div>
@@ -755,7 +776,7 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">
                 {language === 'zh' 
-                  ? '输入 xi-api-key 直连官方 Scale/Enterprise 组织订阅与实时计费流水，自动拉取真实已用 Credit 与席位数据。' 
+                  ? '输入 xi-api-key 直连官方订阅与工作区用量接口。公开 API 不提供完整发票明细，因此页面不会虚构美元账单。'
                   : 'Enter xi-api-key to sync live subscription, real character balances, and enterprise seat allocations.'}
               </p>
             </div>
@@ -994,14 +1015,14 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">
-                  {language === 'zh' ? '业务线与产品维度成本分账明细 (Cost Attribution)' : 'Department & Product Cost Breakdown'}
+                  {language === 'zh' ? '官方工作区用量分析' : 'Official Workspace Usage Analytics'}
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {language === 'zh' ? '展示各业务部门在本计费周期内的调用次数、消耗字符量、预估折算美元与成本占比：' : 'Breakdown by business unit, product feature, invoked model, and spend percentage:'}
+                  {language === 'zh' ? '以下数据直接来自 ElevenLabs Workspace Analytics；它不是发票明细，也不会自行折算美元金额。' : 'Data is returned directly by ElevenLabs Workspace Analytics; it is not an invoice line-item total.'}
                 </p>
               </div>
               <span className="text-xs text-gray-900 font-mono font-bold bg-gray-100 px-2.5 py-1 rounded-lg">
-                {language === 'zh' ? '总估算支出:' : 'Total:'} ${totalCostUsd.toFixed(2)} USD
+                {language === 'zh' ? '官方总账单金额:' : 'Official invoice total:'} —
               </span>
             </div>
 
@@ -1009,42 +1030,30 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-gray-200 text-gray-500 font-medium bg-gray-50/50">
-                    <th className="py-2.5 px-3">{language === 'zh' ? '业务线 / 部门' : 'Department'}</th>
-                    <th className="py-2.5 px-3">{language === 'zh' ? '产品类别' : 'Category'}</th>
-                    <th className="py-2.5 px-3">{language === 'zh' ? '驱动大模型' : 'Model'}</th>
-                    <th className="py-2.5 px-3">{language === 'zh' ? '消耗字符 / 请求数' : 'Usage & Invocations'}</th>
-                    <th className="py-2.5 px-3">{language === 'zh' ? '成本占比' : 'Share (%)'}</th>
-                    <th className="py-2.5 px-3 text-right">{language === 'zh' ? '分账金额 (USD)' : 'Attributed Cost'}</th>
+                    {(usageAnalytics?.columns || []).map((column) => <th key={column} className="py-2.5 px-3">{column}</th>)}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-sans">
-                  {filteredCostItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50 transition">
-                      <td className="py-3 px-3 font-semibold text-gray-900">{item.department}</td>
-                      <td className="py-3 px-3 text-gray-600">
-                        <span className="px-2 py-0.5 bg-gray-100 text-gray-800 rounded font-medium text-[11px]">
-                          {item.category}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-mono text-gray-500">{item.model_name || item.model_id}</td>
-                      <td className="py-3 px-3 font-mono text-gray-700">
-                        <div>{item.characters.toLocaleString()} chars</div>
-                        <div className="text-[10px] text-gray-400">{item.invocations || 0} reqs</div>
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                            <div className="bg-black h-full rounded-full" style={{ width: `${item.percentage}%` }} />
-                          </div>
-                          <span className="font-mono text-gray-500 text-[11px]">{item.percentage}%</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-gray-900">
-                        ${item.cost_usd.toFixed(2)}
-                      </td>
+                  {(usageAnalytics?.rows || []).map((row, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition">
+                      {row.map((value, valueIndex) => <td key={valueIndex} className="py-3 px-3 font-mono text-gray-700">{String(value ?? '—')}</td>)}
                     </tr>
                   ))}
+                  {!usageAnalytics?.rows?.length && <tr><td colSpan={Math.max(1, usageAnalytics?.columns?.length || 1)} className="py-8 px-3 text-center text-gray-500">{language === 'zh' ? '暂无官方用量数据，或当前 Key 无权访问该工作区分析接口。' : 'No official usage data, or this key cannot access workspace analytics.'}</td></tr>}
                 </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">{language === 'zh' ? '官方 API 请求日志' : 'Official API Request Log'}</h3>
+              <p className="text-xs text-gray-500 mt-0.5">{language === 'zh' ? '请求日志包含请求标识、端点、耗时和成功状态，但不包含发票单价。' : 'Request logs include identifiers, endpoint, latency, and success; they do not include invoice prices.'}</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead><tr className="border-b border-gray-200 text-gray-500 bg-gray-50/50">{(requestAnalytics?.columns || []).map(column => <th key={column} className="py-2.5 px-3">{column}</th>)}</tr></thead>
+                <tbody className="divide-y divide-gray-100">{(requestAnalytics?.rows || []).slice(0, 20).map((row, index) => <tr key={index}>{row.map((value, valueIndex) => <td key={valueIndex} className="py-2.5 px-3 font-mono">{String(value ?? '—')}</td>)}</tr>)}{!requestAnalytics?.rows?.length && <tr><td colSpan={Math.max(1, requestAnalytics?.columns?.length || 1)} className="py-6 text-center text-gray-500">—</td></tr>}</tbody>
               </table>
             </div>
           </div>

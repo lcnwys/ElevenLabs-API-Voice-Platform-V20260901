@@ -150,7 +150,17 @@ export interface SubscriptionUsage {
   usage_estimated_value_usd?: number;
   overage_fee_usd?: number;
   total_estimated_spend_usd?: number;
+  current_overage?: { amount?: number | string; currency?: string };
+  open_invoices?: Array<Record<string, any>>;
+  next_invoice?: Record<string, any>;
   is_real_data?: boolean;
+}
+
+export interface AnalyticsTable {
+  columns: string[];
+  column_types?: string[];
+  column_units?: string[];
+  rows: Array<Array<any>>;
 }
 
 export interface WorkspaceMember {

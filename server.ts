@@ -168,7 +168,9 @@ app.get('/api/subscription', async (req, res) => {
     res.status(502).json({ error: 'Failed to reach ElevenLabs user API', details: String(error) });
   }
 });
-app.get('/api/billing-breakdown', (_req, res) => unsupported(res, 'Billing breakdown'));
+app.post('/api/analytics/usage', (req, res) => jsonRequest(req, res, '/v1/workspace/analytics/query/usage-by-product-over-time', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req.body || {}) }));
+app.post('/api/analytics/requests', (req, res) => jsonRequest(req, res, '/v1/workspace/analytics/requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req.body || {}) }));
+app.get('/api/billing-breakdown', (_req, res) => unsupported(res, 'Invoice line-item billing breakdown is not available in the public ElevenLabs API; use workspace usage analytics and subscription data'));
 
 app.get('/api/workspace/keys', (req, res) => jsonRequest(req, res, '/v1/service-accounts'));
 app.post('/api/workspace/keys', (_req, res) => unsupported(res, 'Service account/API key creation'));
@@ -183,7 +185,7 @@ app.get('/api/workspace/webhooks', (req, res) => jsonRequest(req, res, '/v1/webh
 app.post('/api/workspace/webhooks', (req, res) => jsonRequest(req, res, '/v1/webhooks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req.body) }));
 app.delete('/api/workspace/webhooks/:webhook_id', (req, res) => jsonRequest(req, res, `/v1/webhooks/${encodeURIComponent(req.params.webhook_id)}`, { method: 'DELETE' }));
 app.post('/api/workspace/webhooks/:webhook_id/test', (_req, res) => unsupported(res, 'Webhook test delivery'));
-app.get('/api/workspace/audit-logs', (_req, res) => unsupported(res, 'Audit logs'));
+app.get('/api/workspace/audit-logs', (req, res) => jsonRequest(req, res, `/v1/workspace/audit-logs${req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : ''}`));
 app.get('/api/workspace/security', (_req, res) => unsupported(res, 'Security policy'));
 app.post('/api/workspace/security', (_req, res) => unsupported(res, 'Security policy'));
 
