@@ -90,7 +90,9 @@ function fileForm(file: Express.Multer.File, fieldName: string, fields: Record<s
 
 function filesForm(files: Express.Multer.File[], fields: Record<string, unknown> = {}) {
   const form = new FormData();
-  for (const file of files) form.append('files[]', new Blob([file.buffer], { type: file.mimetype }), file.originalname);
+  // ElevenLabs parses this as a repeated `files` field. Do not add [] to the
+  // field name: the API validation expects body.files.
+  for (const file of files) form.append('files', new Blob([file.buffer], { type: file.mimetype }), file.originalname);
   for (const [key, value] of Object.entries(fields)) if (value !== undefined && value !== null && value !== '') form.append(key, String(value));
   return form;
 }
