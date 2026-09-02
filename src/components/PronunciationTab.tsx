@@ -79,137 +79,160 @@ export const PronunciationTab: React.FC<PronunciationTabProps> = ({ language, t,
   };
 
   return (
-    <div id="pronunciation_dictionaries_container" className="space-y-6 animate-in fade-in duration-300">
+    <div id="pronunciation_dictionaries_container" className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
       {/* Header */}
-      <div className="border-b border-slate-800 pb-4">
-        <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-          <BookOpen className="h-5 w-5 text-emerald-400" />
+      <div className="border-b border-gray-200 pb-4">
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-gray-900" />
           <span>{t.dict_title}</span>
         </h2>
-        <p className="text-slate-400 text-xs mt-1">{t.dict_desc}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{t.dict_desc}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Rules & Add Form */}
         <div className="lg:col-span-7 space-y-5">
           {/* Add Rule Form */}
-          <form onSubmit={handleAddRule} className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-3">
-              <Plus className="h-4 w-4 text-emerald-400" />
-              <span>{t.dict_add_rule}</span>
+          <form onSubmit={handleAddRule} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm">
+            <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              {t.dict_add_rule}
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-white mb-1.5">{t.dict_word_to_replace}</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t.dict_original_word}</label>
                 <input
                   type="text"
                   required
                   value={newRuleWord}
-                  onChange={e => setNewRuleWord(e.target.value)}
-                  placeholder="e.g. ElevenLabs"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                  onChange={(e) => setNewRuleWord(e.target.value)}
+                  placeholder="e.g. PostgreSQL"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-black"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-white mb-1.5">{t.dict_rule_type}</label>
-                <select
-                  value={newRuleType}
-                  onChange={e => setNewRuleType(e.target.value as any)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="alias">{t.dict_type_alias}</option>
-                  <option value="phoneme">{t.dict_type_phoneme}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-white mb-1.5">{t.dict_replacement}</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t.dict_replacement}</label>
                 <input
                   type="text"
                   required
                   value={newRuleReplacement}
-                  onChange={e => setNewRuleReplacement(e.target.value)}
-                  placeholder={newRuleType === 'alias' ? 'e.g. 11-Labs' : 'e.g. ɪˈlɛv.ən.læbz'}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 font-mono"
+                  onChange={(e) => setNewRuleReplacement(e.target.value)}
+                  placeholder="e.g. Postgres Q L"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-black"
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition"
-            >
-              <Save className="h-4 w-4" />
-              <span>{language === 'zh' ? '保存规则至字典' : 'Save Rule to Dictionary'}</span>
-            </button>
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-3">
+                <label className="text-xs text-gray-600 flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="rule_type"
+                    checked={newRuleType === 'alias'}
+                    onChange={() => setNewRuleType('alias')}
+                    className="accent-black"
+                  />
+                  <span>文本别名 (Alias)</span>
+                </label>
+                <label className="text-xs text-gray-600 flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="rule_type"
+                    checked={newRuleType === 'phoneme'}
+                    onChange={() => setNewRuleType('phoneme')}
+                    className="accent-black"
+                  />
+                  <span>IPA 国际音标 (Phoneme)</span>
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                className="bg-black hover:bg-gray-800 text-white font-medium text-xs px-4 py-2 rounded-lg transition flex items-center gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{t.dict_btn_add}</span>
+              </button>
+            </div>
           </form>
 
-          {/* Active Rules List */}
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-3">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="flex items-center gap-2">
-                <FileCheck className="h-4 w-4 text-emerald-400" />
-                <span>{selectedDict?.name || 'Active Dictionary'} ({selectedDict?.rules.length || 0} Rules)</span>
-              </span>
-            </h3>
+          {/* Rules List */}
+          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3 shadow-sm">
+            <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{t.dict_rules_list}</h3>
 
-            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-              {selectedDict?.rules.map((rule, idx) => (
-                <div
-                  key={idx}
-                  className="bg-slate-950 border border-slate-850 rounded-xl p-3 flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center space-x-3">
-                    <span className="font-semibold text-white">{rule.string_to_replace}</span>
-                    <span className="text-slate-500 font-mono">→</span>
-                    <span className="font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      {rule.replacement}
-                    </span>
+            {(!selectedDict || selectedDict.rules.length === 0) ? (
+              <p className="text-xs text-gray-400 py-4 text-center">{t.dict_empty_rules}</p>
+            ) : (
+              <div className="space-y-2">
+                {selectedDict.rules.map((rule, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900">{rule.string_to_replace}</span>
+                      <span className="text-gray-400">➔</span>
+                      <span className="font-mono text-gray-700">{rule.replacement}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-gray-200 text-[10px] font-medium text-gray-700">
+                        {rule.rule_type}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (!selectedDict) return;
+                        const updated = {
+                          ...selectedDict,
+                          rules: selectedDict.rules.filter((_, i) => i !== idx)
+                        };
+                        setSelectedDict(updated);
+                      }}
+                      className="text-gray-400 hover:text-red-600 transition"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                  <span className="text-[10px] text-slate-400 uppercase font-mono px-2 py-0.5 bg-slate-900 rounded">
-                    {rule.rule_type} {rule.alphabet ? `(${rule.alphabet})` : ''}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Right Column: Rule Phoneme Tester */}
-        <div className="lg:col-span-5 bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-3">
-            <Code2 className="h-4 w-4 text-emerald-400" />
-            <span>{language === 'zh' ? '发音字典匹配测试器' : 'Phoneme Match Sandbox'}</span>
-          </h3>
+        {/* Right Column: Rule Test Simulator */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm h-full flex flex-col justify-between">
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{t.dict_simulator_title}</h3>
+              <p className="text-xs text-gray-500">{t.dict_simulator_desc}</p>
 
-          <div>
-            <label className="block text-xs font-semibold text-white mb-2">{language === 'zh' ? '测试原始语句' : 'Test Input Sentence'}</label>
-            <textarea
-              rows={3}
-              value={testText}
-              onChange={e => setTestText(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-850 rounded-xl p-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
-            />
-          </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t.dict_test_input}</label>
+                <textarea
+                  rows={3}
+                  value={testText}
+                  onChange={(e) => setTestText(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-3 text-xs text-gray-900 focus:outline-none focus:border-black resize-none"
+                />
+              </div>
 
-          <button
-            onClick={handleTestPhonemes}
-            className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition"
-          >
-            <Sparkles className="h-4 w-4" />
-            <span>{language === 'zh' ? '执行规则解析与替换' : 'Evaluate Phonetic Replacement'}</span>
-          </button>
+              <button
+                onClick={handleTestPhonemes}
+                className="w-full bg-black hover:bg-gray-800 text-white font-medium text-xs py-2.5 rounded-lg transition flex items-center justify-center gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{t.dict_btn_test}</span>
+              </button>
 
-          {testResult && (
-            <div className="bg-slate-950 border border-emerald-500/30 rounded-xl p-4 space-y-2">
-              <span className="text-[10px] text-emerald-400 font-mono uppercase font-bold">Resolved Pronunciation Mapping:</span>
-              <p className="text-xs text-white font-mono leading-relaxed bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-                {testResult}
-              </p>
+              {testResult && (
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-1">
+                  <span className="text-[11px] font-medium text-gray-500">{t.dict_output_preview}:</span>
+                  <p className="font-mono text-xs text-gray-900">{testResult}</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

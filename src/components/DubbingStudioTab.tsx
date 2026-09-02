@@ -92,166 +92,149 @@ export const DubbingStudioTab: React.FC<DubbingStudioTabProps> = ({ language, t,
   };
 
   return (
-    <div id="dubbing_studio_container" className="space-y-6 animate-in fade-in duration-300">
+    <div id="dubbing_studio_container" className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
       {/* Header */}
-      <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
+      <div className="border-b border-gray-200 pb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-            <Film className="h-5 w-5 text-emerald-400" />
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <Film className="h-5 w-5 text-gray-900" />
             <span>{t.dubbing_title}</span>
           </h2>
-          <p className="text-slate-400 text-xs mt-1">{t.dubbing_desc}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{t.dubbing_desc}</p>
         </div>
+
         <button
           onClick={fetchDubbings}
-          className="p-2 bg-slate-900 border border-slate-800 hover:text-emerald-400 text-slate-400 rounded-xl transition"
-          title="Refresh List"
+          disabled={loadingList}
+          className="p-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-lg transition"
         >
-          <RefreshCw className={`h-4 w-4 ${loadingList ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${loadingList ? 'animate-spin text-black' : ''}`} />
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Create Dubbing Project */}
-        <form onSubmit={handleSubmit} className="lg:col-span-5 bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-3">
-            <Plus className="h-4 w-4 text-emerald-400" />
-            <span>{t.dubbing_create_btn}</span>
-          </h3>
+        {/* Left Column: Create Dubbing Job */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm">
+            <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{t.dubbing_new_job_title}</h3>
 
-          <div>
-            <label className="block text-xs font-semibold text-white mb-1.5">{t.dubbing_project_name}</label>
-            <input
-              type="text"
-              required
-              value={projectName}
-              onChange={e => setProjectName(e.target.value)}
-              placeholder="e.g. Q3 Product Keynote Spanish & Mandarin Localization"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-white mb-1.5">{t.dubbing_source_lang}</label>
-              <select
-                value={sourceLang}
-                onChange={e => setSourceLang(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              >
-                <option value="auto">Auto Detect</option>
-                <option value="en">English (EN)</option>
-                <option value="zh">Chinese (中文)</option>
-                <option value="ja">Japanese (日本語)</option>
-                <option value="es">Spanish (ES)</option>
-                <option value="de">German (DE)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-white mb-1.5">{t.dubbing_target_langs}</label>
-              <select
-                value={targetLang}
-                onChange={e => setTargetLang(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              >
-                <option value="zh">Chinese (中文普通话)</option>
-                <option value="es">Spanish (Español)</option>
-                <option value="ja">Japanese (日本語)</option>
-                <option value="fr">French (Français)</option>
-                <option value="de">German (Deutsch)</option>
-                <option value="pt">Portuguese (Português)</option>
-                <option value="en">English (EN)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* File Upload Box */}
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-800 hover:border-emerald-500/50 bg-slate-950 rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition space-y-2"
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="video/*,audio/*"
-              className="hidden"
-            />
-            <Video className="h-5 w-5 text-emerald-400" />
-            <span className="text-xs font-semibold text-white">
-              {selectedFile ? selectedFile.name : t.dubbing_upload_video}
-            </span>
-            <span className="text-[10px] text-slate-500">Supports MP4, MOV, MKV, MP3, WAV</span>
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition disabled:opacity-50"
-          >
-            <Sparkles className={`h-4 w-4 ${submitting ? 'animate-spin' : ''}`} />
-            <span>{submitting ? 'Submitting to Dubbing Engine...' : t.dubbing_submit_btn}</span>
-          </button>
-        </form>
-
-        {/* Right Column: Active Dubbing Projects */}
-        <div className="lg:col-span-7 bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-3">
-            <span className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-emerald-400" />
-              <span>{language === 'zh' ? '多语言配音项目流水线' : 'Dubbing Localization Pipelines'} ({projects.length})</span>
-            </span>
-          </h3>
-
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-            {projects.map(proj => (
-              <div
-                key={proj.dubbing_id}
-                className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3 transition hover:border-emerald-500/30"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-white">{proj.name}</h4>
-                    <span className="text-[10px] font-mono text-slate-500">ID: {proj.dubbing_id}</span>
-                  </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
-                      proj.status === 'dubbed'
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse'
-                    }`}
-                  >
-                    {proj.status === 'dubbed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                    <span>{proj.status === 'dubbed' ? t.dubbing_status_dubbed : t.dubbing_status_dubbing}</span>
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-slate-400">Target Languages:</span>
-                  <div className="flex gap-1.5">
-                    {proj.target_languages.map(lang => (
-                      <span key={lang} className="px-2 py-0.5 bg-slate-900 border border-slate-800 rounded text-[11px] font-mono text-emerald-400 uppercase">
-                        {lang}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {proj.status === 'dubbed' && (
-                  <div className="pt-2 border-t border-slate-900 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500">Master Rendered with Voice Clone</span>
-                    <button
-                      onClick={() => alert(`Downloading localized media master for ${proj.name}`)}
-                      className="px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-emerald-400 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      <span>{language === 'zh' ? '下载多语种母带' : 'Download Localized Media'}</span>
-                    </button>
-                  </div>
-                )}
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t.dubbing_project_name}</label>
+                <input
+                  type="text"
+                  required
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="e.g. 商业发布会视频配音"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-black"
+                />
               </div>
-            ))}
+
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100/60 rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-1.5"
+              >
+                <Upload className="h-6 w-6 text-gray-400" />
+                <div className="text-xs font-medium text-gray-700">
+                  {selectedFile ? selectedFile.name : (language === 'zh' ? '选择视频或音频源文件' : 'Select video or audio file')}
+                </div>
+                <p className="text-[10px] text-gray-400">MP4, MKV, MOV, MP3 (Max 500MB)</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*,audio/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{t.dubbing_source_lang}</label>
+                  <select
+                    value={sourceLang}
+                    onChange={(e) => setSourceLang(e.target.value)}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-black"
+                  >
+                    <option value="auto">{t.dubbing_lang_auto}</option>
+                    <option value="en">English</option>
+                    <option value="zh">中文</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{t.dubbing_target_lang}</label>
+                  <select
+                    value={targetLang}
+                    onChange={(e) => setTargetLang(e.target.value)}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-black"
+                  >
+                    <option value="zh">中文 (Chinese)</option>
+                    <option value="en">English (US)</option>
+                    <option value="ja">日本語 (Japanese)</option>
+                    <option value="de">Deutsch (German)</option>
+                    <option value="es">Español (Spanish)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting || !projectName.trim()}
+                className="w-full bg-black hover:bg-gray-800 text-white font-medium text-xs py-3 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>{t.dubbing_submitting}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    <span>{t.dubbing_btn_create}</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Right Column: Projects List */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3 shadow-sm h-full flex flex-col justify-between">
+            <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{t.dubbing_list_title}</h3>
+
+            {projects.length === 0 ? (
+              <div className="my-auto py-12 text-center text-gray-400 space-y-2">
+                <Video className="h-8 w-8 mx-auto stroke-1" />
+                <p className="text-xs">{t.dubbing_empty}</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {projects.map((p) => (
+                  <div
+                    key={p.dubbing_id}
+                    className="p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between gap-3"
+                  >
+                    <div className="space-y-0.5">
+                      <h4 className="text-xs font-semibold text-gray-900">{p.name}</h4>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                        <span>{p.source_lang.toUpperCase()} ➔ {p.target_lang.toUpperCase()}</span>
+                        <span>•</span>
+                        <span className="capitalize">{p.status}</span>
+                      </div>
+                    </div>
+
+                    <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-gray-200 text-gray-800">
+                      {p.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -245,14 +245,21 @@ export interface ServiceApiKey {
 
 export interface CostAttributionItem {
   id: string;
-  category: 'TTS' | 'STS' | 'Voice Design' | 'Agents' | 'Sound Effects';
+  category: string;
+  feature_name?: string;
   model_id: string;
   model_name: string;
+  voice_name?: string;
+  voice_persona?: string;
+  voice_type?: string;
+  voice_id?: string;
   department: string;
   characters: number;
   cost_usd: number;
   invocations: number;
   percentage: number;
+  rate_per_1k?: number;
+  key_scope?: string;
 }
 
 export interface ConversationalAgentSummary {

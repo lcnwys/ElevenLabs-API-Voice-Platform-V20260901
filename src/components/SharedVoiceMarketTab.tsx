@@ -10,7 +10,8 @@ import {
   Users,
   Sparkles,
   Volume2,
-  Bookmark
+  Bookmark,
+  Check
 } from 'lucide-react';
 import { SharedVoice, Voice } from '../types';
 
@@ -53,6 +54,10 @@ export const SharedVoiceMarketTab: React.FC<SharedVoiceMarketTabProps> = ({
     if (audioElem) {
       audioElem.pause();
     }
+    if (playingId === id) {
+      setPlayingId(null);
+      return;
+    }
     const a = new Audio(url);
     setAudioElem(a);
     setPlayingId(id);
@@ -89,105 +94,111 @@ export const SharedVoiceMarketTab: React.FC<SharedVoiceMarketTabProps> = ({
   });
 
   return (
-    <div id="shared_voice_market_container" className="space-y-6 animate-in fade-in duration-300">
+    <div id="shared_voice_market_container" className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-200">
       {/* Header */}
-      <div className="border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-            <Globe className="h-5 w-5 text-emerald-400" />
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <Globe className="h-5 w-5 text-gray-900" />
             <span>{t.market_title}</span>
           </h2>
-          <p className="text-slate-400 text-xs mt-1">{t.market_desc}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{t.market_desc}</p>
         </div>
 
-        {/* Search Bar */}
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <input
             type="text"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t.market_search_placeholder}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+            className="w-full bg-white border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-black transition"
           />
         </div>
       </div>
 
-      {/* Voice Cards Grid */}
+      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map(v => (
-          <div
-            key={v.voice_id}
-            className="bg-slate-900/40 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-4 transition"
-          >
-            <div>
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-xs font-bold text-white leading-tight">{v.name}</h3>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    {v.accent && (
-                      <span className="px-2 py-0.5 bg-slate-950 text-emerald-400 border border-slate-800 rounded text-[10px] uppercase font-mono">
-                        {v.accent}
-                      </span>
-                    )}
-                    {v.gender && (
-                      <span className="px-2 py-0.5 bg-slate-950 text-slate-300 border border-slate-800 rounded text-[10px] capitalize">
-                        {v.gender}
-                      </span>
-                    )}
-                    {v.category && (
-                      <span className="px-2 py-0.5 bg-slate-950 text-slate-400 border border-slate-800 rounded text-[10px] capitalize">
-                        {v.category}
-                      </span>
-                    )}
+        {filtered.map(v => {
+          const isImported = importedIds.has(v.voice_id);
+          const isPlaying = playingId === v.voice_id;
+
+          return (
+            <div
+              key={v.voice_id}
+              className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 flex flex-col justify-between hover:border-gray-300 transition"
+            >
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-xs text-gray-800">
+                      {v.name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">{v.name}</h4>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider">{v.category}</span>
+                    </div>
                   </div>
+
+                  <span className="text-[11px] font-mono text-gray-500 font-medium">
+                    ★ {v.rating?.toFixed(1) || '4.9'}
+                  </span>
                 </div>
 
-                {v.rate && (
-                  <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
-                    <Star className="h-3 w-3 fill-current" />
-                    <span>{v.rate}</span>
-                  </span>
-                )}
+                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                  {v.description || 'Community contributed high fidelity voice model.'}
+                </p>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {v.accent && (
+                    <span className="px-2 py-0.5 rounded bg-gray-50 border border-gray-200 text-[10px] text-gray-600">
+                      {v.accent}
+                    </span>
+                  )}
+                  {v.gender && (
+                    <span className="px-2 py-0.5 rounded bg-gray-50 border border-gray-200 text-[10px] text-gray-600">
+                      {v.gender}
+                    </span>
+                  )}
+                  {v.use_case && (
+                    <span className="px-2 py-0.5 rounded bg-gray-50 border border-gray-200 text-[10px] text-gray-600">
+                      {v.use_case}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {v.description && (
-                <p className="text-xs text-slate-400 mt-2.5 line-clamp-2 leading-relaxed">
-                  {v.description}
-                </p>
-              )}
-            </div>
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100 gap-2">
+                <button
+                  type="button"
+                  onClick={() => playPreview(v.preview_url, v.voice_id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
+                    isPlaying
+                      ? 'bg-black text-white'
+                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200'
+                  }`}
+                >
+                  {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                  <span>{isPlaying ? (language === 'zh' ? '暂停' : 'Pause') : (language === 'zh' ? '试听' : 'Sample')}</span>
+                </button>
 
-            <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
-              <span className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
-                <Users className="h-3 w-3" />
-                <span>{(v.usage_characters_count || 5000000).toLocaleString()} {t.text_count}</span>
-              </span>
-
-              <button
-                onClick={() => handleImport(v)}
-                disabled={importedIds.has(v.voice_id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
-                  importedIds.has(v.voice_id)
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-slate-800 hover:bg-emerald-600 hover:text-slate-950 text-white'
-                }`}
-              >
-                {importedIds.has(v.voice_id) ? (
-                  <>
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>{language === 'zh' ? '已添加到工作空间' : 'Imported'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>{t.market_use_voice}</span>
-                  </>
-                )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleImport(v)}
+                  disabled={isImported}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
+                    isImported
+                      ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-default'
+                      : 'bg-black hover:bg-gray-800 text-white'
+                  }`}
+                >
+                  {isImported ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Plus className="h-3.5 w-3.5" />}
+                  <span>{isImported ? (language === 'zh' ? '已添加' : 'Added') : (language === 'zh' ? '添加至音色库' : 'Add Voice')}</span>
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

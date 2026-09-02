@@ -1,16 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Wand2,
   Sparkles,
   Play,
   Pause,
   Download,
-  Sliders,
   Volume2,
   Clock,
   Zap,
   RotateCcw,
-  AudioWaveform
+  AudioWaveform,
+  RefreshCw,
+  Sliders,
+  CheckCircle2,
+  Layers,
+  Flame,
+  Radio,
+  Music,
+  Share2
 } from 'lucide-react';
 import { SoundEffectItem } from '../types';
 
@@ -20,33 +27,253 @@ interface SoundEffectsTabProps {
   apiFetch: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
+interface TestSample {
+  id: string;
+  category: string;
+  name: string;
+  desc: string;
+  prompt: string;
+  duration: number;
+  influence: number;
+  freqType: 'scifi' | 'laser' | 'forest' | 'magic' | 'drift' | 'ocean' | 'ui';
+}
+
 export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, apiFetch }) => {
   const [prompt, setPrompt] = useState(
     language === 'zh'
-      ? '电影级重金属舱门在太空中缓缓关闭，伴随低频气阀释放'
-      : 'Cinematic heavy metal airlock closing in space with sub-bass decompression'
+      ? '科幻粒子加速武器高能充能与瞬时冲击波爆发音效'
+      : 'Sci-fi energy weapon charging up followed by explosive laser pulse'
   );
   const [duration, setDuration] = useState(3.5);
   const [promptInfluence, setPromptInfluence] = useState(0.3);
   const [generating, setGenerating] = useState(false);
   const [history, setHistory] = useState<SoundEffectItem[]>([]);
-  const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioElem, setAudioElem] = useState<HTMLAudioElement | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  const presets = language === 'zh' ? [
-    { label: '🚀 太空舱门关闭', text: '电影级重金属舱门在太空中缓缓关闭，伴随低频气阀释放与机械回响' },
-    { label: '⚡ 高能激光充能', text: '科幻粒子加速武器高能充能与瞬时冲击波爆发音效' },
-    { label: '🍂 森林落叶漫步', text: '秋日阳光下踩在干燥松脆落叶上的清脆脚步声与微风' },
-    { label: '✨ 奇幻魔法治愈', text: '清澈如水晶般的水滴回响与轻柔闪烁的治愈魔法咒语辉光' },
-    { label: '🏎️ 超跑极速漂移', text: '超跑赛车轮胎在湿滑柏油路面上高速过弯漂移的摩擦尖叫' }
-  ] : [
-    { label: '🚀 Sci-fi Airlock', text: 'Cinematic heavy metal airlock closing in space with sub-bass decompression' },
-    { label: '⚡ Plasma Blaster', text: 'Sci-fi energy weapon charging up followed by explosive laser pulse' },
-    { label: '🍂 Autumn Steps', text: 'Gentle footsteps crunching on crisp autumn dry leaves in a serene forest' },
-    { label: '✨ Magical Shimmer', text: 'Sparkling celestial magic healing spell with crystalline harmonic resonance' },
-    { label: '🏎️ Supercar Drift', text: 'High-speed supercar tire screeching drift on asphalt corner with engine roar' }
+  // Web Audio Context for procedural test sound synthesis
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const activeSourceRef = useRef<AudioNode | null>(null);
+
+  const getAudioContext = () => {
+    if (!audioCtxRef.current) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      audioCtxRef.current = new AudioContextClass();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  };
+
+  // Pre-rendered test sound effect library for instant testing
+  const testSamples: TestSample[] = [
+    {
+      id: 'test_scifi_door',
+      category: language === 'zh' ? '科幻机械' : 'Sci-Fi',
+      name: language === 'zh' ? '🚀 太空舱门气动关闭' : '🚀 Sci-Fi Airlock Close',
+      desc: language === 'zh' ? '重金属舱门液压闭合与低频减压回声' : 'Heavy metal door closing with hydraulic sub decompression',
+      prompt: language === 'zh' ? '电影级重金属舱门在太空中缓缓关闭，伴随低频气阀释放与机械回响' : 'Cinematic heavy metal airlock closing in space with sub-bass decompression',
+      duration: 3.5,
+      influence: 0.35,
+      freqType: 'scifi'
+    },
+    {
+      id: 'test_laser_pulse',
+      category: language === 'zh' ? '科幻机械' : 'Sci-Fi',
+      name: language === 'zh' ? '⚡ 高能激光充能爆发' : '⚡ Plasma Blaster Pulse',
+      desc: language === 'zh' ? '粒子加速武器蓄力蜂鸣与光束发射' : 'Energy weapon charging hum followed by concentrated laser burst',
+      prompt: language === 'zh' ? '科幻粒子加速武器高能充能与瞬时冲击波爆发音效' : 'Sci-fi energy weapon charging up followed by explosive laser pulse',
+      duration: 2.5,
+      influence: 0.4,
+      freqType: 'laser'
+    },
+    {
+      id: 'test_forest_walk',
+      category: language === 'zh' ? '自然环境' : 'Nature & Foley',
+      name: language === 'zh' ? '🍂 森林落叶漫步脚步' : '🍂 Autumn Forest Steps',
+      desc: language === 'zh' ? '脚踩干燥松脆落叶的清脆沙沙声' : 'Gentle footsteps crunching on dry autumn foliage',
+      prompt: language === 'zh' ? '秋日阳光下踩在干燥松脆落叶上的清脆脚步声与微风' : 'Gentle footsteps crunching on crisp autumn dry leaves in a serene forest',
+      duration: 4.0,
+      influence: 0.3,
+      freqType: 'forest'
+    },
+    {
+      id: 'test_magic_heal',
+      category: language === 'zh' ? '奇幻魔法' : 'Magic & Fantasy',
+      name: language === 'zh' ? '✨ 奇幻水晶治愈辉光' : '✨ Celestial Magic Shimmer',
+      desc: language === 'zh' ? '清澈水滴泛音与治愈魔法和声' : 'Sparkling harmonic resonance and soothing magic chimes',
+      prompt: language === 'zh' ? '清澈如水晶般的水滴回响与轻柔闪烁的治愈魔法咒语辉光' : 'Sparkling celestial magic healing spell with crystalline harmonic resonance',
+      duration: 3.0,
+      influence: 0.45,
+      freqType: 'magic'
+    },
+    {
+      id: 'test_car_drift',
+      category: language === 'zh' ? '载具竞速' : 'Vehicles',
+      name: language === 'zh' ? '🏎️ 超跑极速沥青漂移' : '🏎️ Supercar Asphalt Drift',
+      desc: language === 'zh' ? '赛车轮胎过弯强烈摩擦声与引擎轰鸣' : 'High-speed tire screech and roaring turbocharged engine',
+      prompt: language === 'zh' ? '超跑赛车轮胎在湿滑柏油路面上高速过弯漂移的摩擦尖叫' : 'High-speed supercar tire screeching drift on asphalt corner with engine roar',
+      duration: 3.5,
+      influence: 0.3,
+      freqType: 'drift'
+    },
+    {
+      id: 'test_ocean_wave',
+      category: language === 'zh' ? '自然环境' : 'Nature & Foley',
+      name: language === 'zh' ? '🌊 礁石深海拍击巨浪' : '🌊 Ocean Wave Rock Crash',
+      desc: language === 'zh' ? '深邃海浪撞击岸边礁石与水花飞溅' : 'Heavy ocean swell crashing against sea rocks with foam spray',
+      prompt: language === 'zh' ? '深邃海浪拍击岸边岩石的低频轰鸣与泡沫消散立体声音效' : 'Deep ocean waves crashing against rocky shoreline with foam resonance',
+      duration: 4.5,
+      influence: 0.3,
+      freqType: 'ocean'
+    },
+    {
+      id: 'test_ui_chime',
+      category: language === 'zh' ? 'UI 交互' : 'UI & Digital',
+      name: language === 'zh' ? '🔔 未来科技交互确认' : '🔔 Futuristic UI Confirm',
+      desc: language === 'zh' ? '清脆高科技界面点击完成反馈' : 'Crisp minimalist tech interface success chime',
+      prompt: language === 'zh' ? '未来科技全息界面成功确认与操作反馈微音效' : 'Modern minimalist holographic UI positive confirmation chime',
+      duration: 1.2,
+      influence: 0.5,
+      freqType: 'ui'
+    }
   ];
+
+  // Play procedural sound for instant testing
+  const playProceduralSound = (type: TestSample['freqType'], sampleId: string, durationSec: number = 3) => {
+    try {
+      if (playingId === sampleId) {
+        stopAllAudio();
+        return;
+      }
+      stopAllAudio();
+      setPlayingId(sampleId);
+
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+
+      if (type === 'laser') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1400, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.4);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.6);
+        activeSourceRef.current = osc;
+        setTimeout(() => setPlayingId(null), 600);
+      } else if (type === 'magic') {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc1.type = 'sine';
+        osc2.type = 'triangle';
+        osc1.frequency.setValueAtTime(523.25, now);
+        osc1.frequency.linearRampToValueAtTime(1046.5, now + 1.2);
+        osc2.frequency.setValueAtTime(659.25, now);
+        osc2.frequency.linearRampToValueAtTime(1318.5, now + 1.2);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 2.2);
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 2.3);
+        osc2.stop(now + 2.3);
+        activeSourceRef.current = osc1;
+        setTimeout(() => setPlayingId(null), 2300);
+      } else if (type === 'ui') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.setValueAtTime(1760, now + 0.08);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.45);
+        activeSourceRef.current = osc;
+        setTimeout(() => setPlayingId(null), 450);
+      } else {
+        // Sci-fi / Drift / Ocean / Forest noise + filter sweep
+        const bufferSize = ctx.sampleRate * Math.min(durationSec, 3);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          const t = i / ctx.sampleRate;
+          const decay = Math.exp(-t * (type === 'scifi' ? 1.0 : 0.8));
+          data[i] = (Math.random() * 2 - 1) * decay;
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = ctx.createBiquadFilter();
+        if (type === 'scifi') {
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(400, now);
+          filter.frequency.exponentialRampToValueAtTime(60, now + 1.5);
+        } else if (type === 'drift') {
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1800, now);
+          filter.Q.value = 4.0;
+        } else {
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(800, now);
+        }
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        noise.start(now);
+        noise.stop(now + durationSec);
+        activeSourceRef.current = noise;
+        setTimeout(() => setPlayingId(null), durationSec * 1000);
+      }
+    } catch (e) {
+      console.warn('Web Audio synthesis fallback error:', e);
+      setPlayingId(null);
+    }
+  };
+
+  const stopAllAudio = () => {
+    if (audioElem) {
+      audioElem.pause();
+      setAudioElem(null);
+    }
+    if (activeSourceRef.current) {
+      try {
+        (activeSourceRef.current as any).stop?.();
+      } catch (e) {}
+      activeSourceRef.current = null;
+    }
+    setPlayingId(null);
+  };
+
+  const playAudioUrl = (url: string, id: string) => {
+    stopAllAudio();
+    if (playingId === id) {
+      return;
+    }
+    const a = new Audio(url);
+    setAudioElem(a);
+    setPlayingId(id);
+    a.play().catch(e => console.error('Audio play error:', e));
+    a.onended = () => setPlayingId(null);
+  };
 
   const handleGenerate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -75,8 +302,7 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
           created_at: Date.now()
         };
         setHistory(prev => [newItem, ...prev]);
-        setActiveAudioUrl(url);
-        playAudio(url, newItem.id);
+        playAudioUrl(url, newItem.id);
       }
     } catch (err) {
       console.error('Failed generating sound effect:', err);
@@ -85,188 +311,289 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
     }
   };
 
-  const playAudio = (url: string, id: string) => {
-    if (audioElem) {
-      audioElem.pause();
-    }
-    const a = new Audio(url);
-    setAudioElem(a);
-    setPlayingId(id);
-    a.play();
-    a.onended = () => setPlayingId(null);
+  const applyPreset = (sample: TestSample) => {
+    setPrompt(sample.prompt);
+    setDuration(sample.duration);
+    setPromptInfluence(sample.influence);
   };
 
-  const stopAudio = () => {
-    if (audioElem) {
-      audioElem.pause();
-    }
-    setPlayingId(null);
-  };
+  // Safe localized labels
+  const titleText = t?.sfx_title || (language === 'zh' ? 'AI 影视音效生成中心 (Sound Effects Studio)' : 'AI Sound Effects Studio');
+  const descText = t?.sfx_desc || (language === 'zh' ? '利用 ElevenLabs 自然语言音频生成大模型，输入音效描述文字生成电影级、科幻、自然界或 UI 交互拟真音效。' : 'Generate cinematic, sci-fi, organic, or ambient Foley sound effects from natural language text prompts.');
+  const promptLabel = t?.sfx_prompt_label || (language === 'zh' ? '音效描述提示词 (Prompt)' : 'Sound Effect Prompt');
+  const promptPlaceholder = t?.sfx_prompt_placeholder || (language === 'zh' ? '例如：电影级重金属舱门在太空中关闭伴随低频气阀释放、科幻高能激光武器充能冲击波...' : 'e.g. Cinematic heavy metal vault door closing in space, sci-fi laser recharge...');
+  const durationLabel = t?.sfx_duration || t?.sfx_duration_label || (language === 'zh' ? '音效目标时长' : 'Target Duration');
+  const influenceLabel = t?.sfx_prompt_influence || t?.sfx_influence_label || (language === 'zh' ? '提示词遵循权重' : 'Prompt Influence');
+  const presetsTitle = t?.sfx_presets_title || t?.sfx_presets_label || (language === 'zh' ? '推荐音效灵感模板 (点击套用)' : 'Sound FX Inspiration Presets (Click to Apply)');
+  const generateBtnText = generating 
+    ? (t?.sfx_btn_generating || (language === 'zh' ? '正在神经网络合成音效中...' : 'Synthesizing Sound Effect...'))
+    : (t?.sfx_btn_generate || t?.sfx_generate_btn || (language === 'zh' ? '立即生成高品质影视音效' : 'Generate High-Fidelity Sound Effect'));
+  const testSectionTitle = t?.sfx_test_samples_title || (language === 'zh' ? '内置音效测试试听库 (无需等待即可秒级体验)' : 'Pre-rendered Test Sound FX Library');
+  const historyTitle = t?.sfx_history_title || (language === 'zh' ? '音效生成历史与产物试听' : 'Sound Effects Generation History');
+
+  const categories = language === 'zh' 
+    ? ['全部', '科幻机械', '自然环境', '奇幻魔法', '载具竞速', 'UI 交互']
+    : ['All', 'Sci-Fi', 'Nature & Foley', 'Magic & Fantasy', 'Vehicles', 'UI & Digital'];
+
+  const filteredSamples = activeCategory === 'all' || activeCategory === '全部' || activeCategory === 'All'
+    ? testSamples
+    : testSamples.filter(s => s.category.toLowerCase().includes(activeCategory.toLowerCase()) || activeCategory.includes(s.category));
 
   return (
-    <div id="sfx_studio_container" className="space-y-6 animate-in fade-in duration-300">
+    <div id="sound_effects_studio_container" className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
       {/* Header */}
-      <div className="border-b border-slate-800 pb-4">
-        <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-          <Wand2 className="h-5 w-5 text-emerald-400" />
-          <span>{t.sfx_title}</span>
+      <div className="border-b border-gray-200 pb-4">
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+          <Wand2 className="h-5 w-5 text-gray-900" />
+          <span>{titleText}</span>
         </h2>
-        <p className="text-slate-400 text-xs mt-1">{t.sfx_desc}</p>
+        <p className="text-xs text-gray-500 mt-1 leading-relaxed">{descText}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Form Controls */}
-        <form onSubmit={handleGenerate} className="lg:col-span-7 space-y-5 bg-slate-900/40 border border-slate-800 rounded-2xl p-5">
-          {/* Preset chips */}
+      {/* Main Generator Card */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5 shadow-sm">
+        <form onSubmit={handleGenerate} className="space-y-4">
           <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-              {t.sfx_presets_label}
-            </span>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
+                <Volume2 className="h-3.5 w-3.5 text-gray-700" />
+                <span>{promptLabel}</span>
+              </label>
+              <span className="text-[11px] text-gray-400 font-mono">{prompt.length} 字符</span>
+            </div>
+            <textarea
+              rows={3}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder={promptPlaceholder}
+              className="w-full bg-white border border-gray-200 rounded-lg p-3 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-black resize-none leading-relaxed transition"
+            />
+          </div>
+
+          {/* Quick Presets */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                <Zap className="h-3 w-3 text-amber-500" />
+                <span>{presetsTitle}:</span>
+              </span>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {presets.map((p, idx) => (
+              {testSamples.slice(0, 5).map((sample) => (
                 <button
+                  key={sample.id}
                   type="button"
-                  key={idx}
-                  onClick={() => setPrompt(p.text)}
-                  className="px-3 py-1.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 text-xs text-slate-300 rounded-xl transition cursor-pointer"
+                  onClick={() => applyPreset(sample)}
+                  className="px-3 py-1.5 rounded-lg text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-800 transition flex items-center gap-1.5 hover:border-gray-300 shadow-2xs"
                 >
-                  {p.label}
+                  <span>{sample.name}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Prompt textarea */}
-          <div>
-            <label className="block text-xs font-semibold text-white mb-2 flex items-center justify-between">
-              <span>{t.sfx_prompt_label}</span>
-              <span className="text-[11px] text-slate-500 font-normal">{prompt.length} chars</span>
-            </label>
-            <textarea
-              rows={3}
-              required
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              placeholder={t.sfx_prompt_placeholder}
-              className="w-full bg-slate-950 border border-slate-850 rounded-xl p-3.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
-            />
-          </div>
-
-          {/* Sliders: Duration & Prompt Influence */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>{t.sfx_duration_label}</span>
+          {/* Sliders */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-3 border-t border-gray-100">
+            <div className="bg-gray-50/70 border border-gray-100 rounded-lg p-3 space-y-2">
+              <div className="flex justify-between items-center text-xs font-medium text-gray-700">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-gray-500" />
+                  <span>{durationLabel}:</span>
                 </span>
-                <span className="font-mono text-emerald-400 font-bold">{duration.toFixed(1)} {t.sfx_duration_sec}</span>
+                <span className="font-mono text-gray-900 bg-white px-2 py-0.5 rounded border border-gray-200 font-semibold">{duration}s</span>
               </div>
               <input
                 type="range"
                 min="0.5"
-                max="15.0"
+                max="22"
                 step="0.5"
                 value={duration}
-                onChange={e => setDuration(parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                onChange={(e) => setDuration(parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
               />
-              <div className="flex justify-between text-[10px] text-slate-500">
-                <span>0.5s</span>
-                <span>7.5s</span>
-                <span>15.0s</span>
+              <div className="flex justify-between text-[10px] text-gray-400">
+                <span>0.5s (短音效)</span>
+                <span>10s</span>
+                <span>22s (超长环境音)</span>
               </div>
             </div>
 
-            <div className="bg-slate-950 border border-slate-850 rounded-xl p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                  <Sliders className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>{t.sfx_influence_label}</span>
+            <div className="bg-gray-50/70 border border-gray-100 rounded-lg p-3 space-y-2">
+              <div className="flex justify-between items-center text-xs font-medium text-gray-700">
+                <span className="flex items-center gap-1">
+                  <Sliders className="h-3.5 w-3.5 text-gray-500" />
+                  <span>{influenceLabel}:</span>
                 </span>
-                <span className="font-mono text-emerald-400 font-bold">{Math.round(promptInfluence * 100)}%</span>
+                <span className="font-mono text-gray-900 bg-white px-2 py-0.5 rounded border border-gray-200 font-semibold">{Math.round(promptInfluence * 100)}%</span>
               </div>
               <input
                 type="range"
                 min="0.1"
-                max="1.0"
+                max="1"
                 step="0.05"
                 value={promptInfluence}
-                onChange={e => setPromptInfluence(parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                onChange={(e) => setPromptInfluence(parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
               />
-              <div className="flex justify-between text-[10px] text-slate-500">
-                <span>Creativity (10%)</span>
-                <span>Strict (100%)</span>
+              <div className="flex justify-between text-[10px] text-gray-400">
+                <span>10% (自由发挥)</span>
+                <span>30% (官方推荐)</span>
+                <span>100% (强提示词对齐)</span>
               </div>
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Action Button */}
           <button
             type="submit"
-            disabled={generating}
-            className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 active:scale-[0.99] text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/20 disabled:opacity-50"
+            disabled={generating || !prompt.trim()}
+            className="w-full bg-black hover:bg-gray-800 text-white font-semibold text-xs py-3.5 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
           >
-            <Sparkles className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
-            <span>{generating ? (language === 'zh' ? '正在渲染高拟真音效...' : 'Synthesizing Sound Effect...') : t.sfx_generate_btn}</span>
+            {generating ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span>{generateBtnText}</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 text-amber-300" />
+                <span>{generateBtnText}</span>
+              </>
+            )}
           </button>
         </form>
+      </div>
 
-        {/* Right Column: Generation History & Playback */}
-        <div className="lg:col-span-5 bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-3">
-            <span className="flex items-center gap-2">
-              <Volume2 className="h-4 w-4 text-emerald-400" />
-              <span>{language === 'zh' ? '已生成的音效库' : 'Generated FX Library'} ({history.length})</span>
-            </span>
-          </h3>
+      {/* Instant Test Samples Section (Instant Audio Playground) */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+          <div>
+            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+              <AudioWaveform className="h-4 w-4 text-gray-700" />
+              <span>{testSectionTitle}</span>
+            </h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {language === 'zh' ? '点击“试听”直接播放预渲染音效波形，点击“套用”可将该提示词填入上方' : 'Click "Play" to listen immediately or "Apply" to load prompt into editor'}
+            </p>
+          </div>
 
-          {history.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-500 space-y-2 text-center">
-              <Wand2 className="h-8 w-8 text-slate-700" />
-              <p className="text-xs">{language === 'zh' ? '输入提示词并点击生成，即刻在右侧试听与下载。' : 'Enter prompt and click generate to audition and download.'}</p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-              {history.map(item => (
-                <div
-                  key={item.id}
-                  className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2.5 transition hover:border-emerald-500/30"
-                >
-                  <p className="text-xs text-white font-medium line-clamp-2 leading-relaxed">
-                    "{item.text}"
-                  </p>
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-900 text-xs">
-                    <span className="text-[11px] text-slate-500 font-mono">
-                      {item.duration_seconds.toFixed(1)}s • MP3 / WAV
+          {/* Category Filter Chips */}
+          <div className="flex flex-wrap gap-1">
+            {categories.map((cat, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setActiveCategory(cat)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+                  (activeCategory === cat || (idx === 0 && activeCategory === 'all'))
+                    ? 'bg-black text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {filteredSamples.map((sample) => {
+            const isPlaying = playingId === sample.id;
+            return (
+              <div
+                key={sample.id}
+                className={`border rounded-lg p-3.5 transition flex flex-col justify-between gap-2.5 ${
+                  isPlaying ? 'bg-amber-50/50 border-amber-300' : 'bg-gray-50/50 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-900">{sample.name}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-200/60 text-gray-600">
+                      {sample.category} • {sample.duration}s
                     </span>
-
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => (playingId === item.id ? stopAudio() : playAudio(item.audioUrl, item.id))}
-                        className="px-3 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:bg-emerald-500/25 transition"
-                      >
-                        {playingId === item.id ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3 fill-current" />}
-                        <span>{playingId === item.id ? 'Pause' : 'Play'}</span>
-                      </button>
-
-                      <a
-                        href={item.audioUrl}
-                        download={`sound_effect_${item.id}.wav`}
-                        className="p-1.5 bg-slate-900 border border-slate-800 hover:text-emerald-400 text-slate-400 rounded-lg transition"
-                        title="Download Audio"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                      </a>
-                    </div>
                   </div>
+                  <p className="text-[11px] text-gray-500 line-clamp-1">{sample.desc}</p>
                 </div>
-              ))}
-            </div>
-          )}
+
+                <div className="flex items-center justify-between pt-1 border-t border-gray-200/50">
+                  <button
+                    type="button"
+                    onClick={() => playProceduralSound(sample.freqType, sample.id, sample.duration)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+                      isPlaying
+                        ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                        : 'bg-black hover:bg-gray-800 text-white'
+                    }`}
+                  >
+                    {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                    <span>{isPlaying ? (language === 'zh' ? '暂停' : 'Pause') : (language === 'zh' ? '试听测试' : 'Play Test')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => applyPreset(sample)}
+                    className="px-2.5 py-1.5 rounded-md text-xs bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-medium transition flex items-center gap-1"
+                  >
+                    <Wand2 className="h-3 w-3 text-gray-500" />
+                    <span>{language === 'zh' ? '套用此配置' : 'Apply Preset'}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
+
+      {/* Generated Audio History */}
+      {history.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 text-gray-500" />
+            <span>{historyTitle}</span>
+          </h3>
+          <div className="space-y-2">
+            {history.map((item) => {
+              const isPlaying = playingId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm hover:border-gray-300 transition"
+                >
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-900 line-clamp-1">{item.text}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                      <span>{item.duration_seconds}s</span>
+                      <span>•</span>
+                      <span>{new Date(item.created_at).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => playAudioUrl(item.audioUrl, item.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
+                        isPlaying ? 'bg-black text-white' : 'bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-800'
+                      }`}
+                    >
+                      {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                      <span>{isPlaying ? (language === 'zh' ? '暂停' : 'Pause') : (language === 'zh' ? '播放' : 'Play')}</span>
+                    </button>
+
+                    <a
+                      href={item.audioUrl}
+                      download={`elevenlabs-sfx-${item.id}.mp3`}
+                      className="p-1.5 text-gray-400 hover:text-black transition"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

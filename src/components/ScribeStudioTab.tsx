@@ -11,7 +11,8 @@ import {
   Sparkles,
   FileCode,
   Copy,
-  Check
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import { SpeechToTextResult } from '../types';
 
@@ -82,7 +83,6 @@ export const ScribeStudioTab: React.FC<ScribeStudioTabProps> = ({ language, t, a
     if (!result || !result.words) return;
     let srtContent = '';
     const words = result.words;
-    // Chunk words into subtitle segments (approx 5 words each)
     let chunk: any[] = [];
     let srtIndex = 1;
 
@@ -114,150 +114,126 @@ export const ScribeStudioTab: React.FC<ScribeStudioTabProps> = ({ language, t, a
     a.click();
   };
 
-  const exportJSON = () => {
-    if (!result) return;
-    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transcription_${result.id}.json`;
-    a.click();
-  };
-
   return (
-    <div id="scribe_stt_container" className="space-y-6 animate-in fade-in duration-300">
+    <div id="scribe_studio_container" className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-200">
       {/* Header */}
-      <div className="border-b border-slate-800 pb-4">
-        <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-          <FileText className="h-5 w-5 text-emerald-400" />
+      <div className="border-b border-gray-200 pb-4">
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+          <FileText className="h-5 w-5 text-gray-900" />
           <span>{t.scribe_title}</span>
         </h2>
-        <p className="text-slate-400 text-xs mt-1">{t.scribe_desc}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{t.scribe_desc}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Upload & Options */}
+        {/* Left Column: Upload */}
         <div className="lg:col-span-5 space-y-4">
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-800 hover:border-emerald-500/50 bg-slate-900/40 hover:bg-slate-900/70 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition space-y-2"
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="audio/*,video/*"
-              className="hidden"
-            />
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <Upload className="h-5 w-5" />
-            </div>
-            <p className="text-xs font-bold text-white">{selectedFile ? selectedFile.name : t.scribe_upload_label}</p>
-            <p className="text-[10px] text-slate-500">MP3, WAV, M4A, FLAC, MP4 up to 500MB</p>
-          </div>
+          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm">
+            <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{t.scribe_upload_label}</h3>
 
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 space-y-4">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100/60 rounded-xl p-8 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2"
+            >
+              <Upload className="h-7 w-7 text-gray-400" />
+              <div className="text-xs font-medium text-gray-700">
+                {selectedFile ? selectedFile.name : (language === 'zh' ? '点击选择音频或视频文件' : 'Click to select audio/video')}
+              </div>
+              <p className="text-[11px] text-gray-400">MP3, WAV, MP4, MOV (Max 100MB)</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*,video/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </div>
+
             <div>
-              <label className="block text-xs font-semibold text-white mb-1.5 flex items-center gap-1.5">
-                <Globe className="h-3.5 w-3.5 text-emerald-400" />
-                <span>{t.scribe_lang_label}</span>
-              </label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t.scribe_language_label}</label>
               <select
                 value={targetLang}
-                onChange={e => setTargetLang(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                onChange={(e) => setTargetLang(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-black"
               >
-                <option value="auto">{language === 'zh' ? '✨ 自动侦测多语种 (Auto Detect)' : '✨ Auto Detect Multilingual'}</option>
-                <option value="eng">English (EN)</option>
-                <option value="cmn">Chinese Mandarin (中文普通话)</option>
-                <option value="jpn">Japanese (日本語)</option>
-                <option value="spa">Spanish (Español)</option>
-                <option value="fra">French (Français)</option>
-                <option value="deu">German (Deutsch)</option>
+                <option value="auto">{t.scribe_lang_auto}</option>
+                <option value="zh">中文 (Chinese)</option>
+                <option value="eng">English</option>
+                <option value="spa">Español</option>
+                <option value="fra">Français</option>
+                <option value="deu">Deutsch</option>
+                <option value="jpn">日本語</option>
               </select>
             </div>
 
             <button
               onClick={handleTranscribe}
               disabled={!selectedFile || transcribing}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition disabled:opacity-50"
+              className="w-full bg-black hover:bg-gray-800 text-white font-medium text-xs py-3 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              <Sparkles className={`h-4 w-4 ${transcribing ? 'animate-spin' : ''}`} />
-              <span>{transcribing ? (language === 'zh' ? '正在执行毫米级语音识别...' : 'Transcribing audio streams...') : t.scribe_transcribe_btn}</span>
+              {transcribing ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>{t.scribe_processing}</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4" />
+                  <span>{t.scribe_btn_transcribe}</span>
+                </>
+              )}
             </button>
           </div>
         </div>
 
-        {/* Right Column: Transcription & Timestamp Display */}
-        <div className="lg:col-span-7 bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <FileCode className="h-4 w-4 text-emerald-400" />
-              <span>{t.scribe_result_title}</span>
-            </h3>
+        {/* Right Column: Transcription Output */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm h-full flex flex-col justify-between">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{t.scribe_result_label}</h3>
 
-            {result && (
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={copyToClipboard}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 transition"
-                  title="Copy full text"
-                >
-                  {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
-                <button
-                  onClick={exportSRT}
-                  className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-emerald-500/25 transition"
-                >
-                  <Download className="h-3 w-3" />
-                  <span>SRT</span>
-                </button>
-                <button
-                  onClick={exportJSON}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 transition"
-                >
-                  <Download className="h-3 w-3" />
-                  <span>JSON</span>
-                </button>
-              </div>
-            )}
-          </div>
+              {result && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={copyToClipboard}
+                    className="p-1.5 text-xs text-gray-500 hover:text-black transition flex items-center gap-1 font-medium"
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copied ? (language === 'zh' ? '已复制' : 'Copied') : (language === 'zh' ? '复制' : 'Copy')}</span>
+                  </button>
 
-          {result ? (
-            <div className="space-y-4">
-              {/* Full Text Card */}
-              <div className="bg-slate-950 border border-slate-850 rounded-xl p-4 text-xs text-slate-200 leading-relaxed max-h-48 overflow-y-auto">
-                {result.text}
-              </div>
-
-              {/* Word Timestamps Grid */}
-              {result.words && result.words.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                    {language === 'zh' ? '单词与时间戳切片 (Word Alignment)' : 'Word Alignment & Timestamps'}
-                  </span>
-                  <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-2 bg-slate-950 border border-slate-850 rounded-xl">
-                    {result.words.map((w, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center space-x-1 px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg text-[11px] hover:border-emerald-500/40 transition cursor-default"
-                        title={`${w.start.toFixed(2)}s - ${w.end.toFixed(2)}s`}
-                      >
-                        <span className="text-white font-medium">{w.text}</span>
-                        <span className="text-[9px] text-slate-500 font-mono">[{w.start.toFixed(1)}s]</span>
-                      </span>
-                    ))}
-                  </div>
+                  <button
+                    onClick={exportSRT}
+                    className="p-1.5 text-xs text-gray-500 hover:text-black transition flex items-center gap-1 font-medium"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>SRT</span>
+                  </button>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-56 text-slate-500 text-center space-y-2">
-              <FileText className="h-8 w-8 text-slate-700" />
-              <p className="text-xs">{language === 'zh' ? '上传音视频文件并启动转录，在此实时查看多语种高精文本与词级对齐。' : 'Upload audio/video and transcribe to view aligned text and export subtitles.'}</p>
-            </div>
-          )}
+
+            {result ? (
+              <div className="space-y-4 my-auto">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 leading-relaxed max-h-72 overflow-y-auto whitespace-pre-wrap">
+                  {result.text}
+                </div>
+
+                <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                  <span>语言: <strong className="text-gray-900 uppercase">{result.language_code}</strong></span>
+                  <span>•</span>
+                  <span>置信度: <strong className="text-gray-900">{Math.round(result.language_probability * 100)}%</strong></span>
+                  <span>•</span>
+                  <span>词数: <strong className="text-gray-900">{result.words?.length || 0}</strong></span>
+                </div>
+              </div>
+            ) : (
+              <div className="my-auto py-12 text-center text-gray-400 space-y-2">
+                <FileText className="h-8 w-8 mx-auto stroke-1" />
+                <p className="text-xs">{language === 'zh' ? '转录结果与逐字时间戳将在此显示' : 'Transcription results and timestamps will appear here'}</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
