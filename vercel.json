@@ -1,8 +1,11 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/[...path]" }
+  ],
   "functions": {
-    "api/[[...path]].ts": {
+    "api/[...path].ts": {
       "includeFiles": "{dist/**,server.ts}"
     }
   }
