@@ -202,7 +202,13 @@ app.get('/api/convai/agents', (req, res) => jsonRequest(req, res, '/v1/convai/ag
 app.post('/api/convai/agents', (req, res) => jsonRequest(req, res, '/v1/convai/agents/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req.body) }));
 app.post('/api/convai/conversation', (_req, res) => unsupported(res, 'Live Conversational AI session; use the official Agents client/WebSocket flow'));
 
-app.post(['/api/sound-effects', '/api/sound-generation'], (req, res) => binaryRequest(req, res, '/v1/sound-generation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req.body) }));
+app.post(['/api/sound-effects', '/api/sound-generation'], (req, res) => {
+  const body = req.body || {};
+  if (!body.text || typeof body.text !== 'string') return res.status(400).json({ error: 'text is required for sound effects generation' });
+  if (body.text.length > 450) return res.status(400).json({ error: 'sound effect prompt must be 450 characters or fewer' });
+  const payload = { text: body.text, duration_seconds: body.duration_seconds, prompt_influence: body.prompt_influence, model_id: body.model_id || 'eleven_text_to_sound_v2', loop: Boolean(body.loop) };
+  return binaryRequest(req, res, '/v1/sound-generation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+});
 app.post('/api/audio-isolation', upload.single('audio'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'audio file is required' });
   return binaryRequest(req, res, '/v1/audio-isolation', { method: 'POST', body: fileForm(req.file, 'audio') });

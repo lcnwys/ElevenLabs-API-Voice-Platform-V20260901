@@ -46,6 +46,7 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
   const [duration, setDuration] = useState(3.5);
   const [promptInfluence, setPromptInfluence] = useState(0.3);
   const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [history, setHistory] = useState<SoundEffectItem[]>([]);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioElem, setAudioElem] = useState<HTMLAudioElement | null>(null);
@@ -144,13 +145,16 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
 
     try {
       setGenerating(true);
+      setGenerationError(null);
       const res = await apiFetch('/api/sound-effects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: prompt,
           duration_seconds: duration,
-          prompt_influence: promptInfluence
+          prompt_influence: promptInfluence,
+          model_id: 'eleven_text_to_sound_v2',
+          loop: false
         })
       });
 
@@ -166,9 +170,13 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
         };
         setHistory(prev => [newItem, ...prev]);
         playAudioUrl(url, newItem.id);
+      } else {
+        const error = await res.json().catch(() => ({}));
+        setGenerationError(error.error || `Sound Effects API returned ${res.status}`);
       }
     } catch (err) {
       console.error('Failed generating sound effect:', err);
+      setGenerationError(language === 'zh' ? '无法连接音效生成接口' : 'Could not reach the sound effects API');
     } finally {
       setGenerating(false);
     }
@@ -268,7 +276,7 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
               <input
                 type="range"
                 min="0.5"
-                max="22"
+              max="30"
                 step="0.5"
                 value={duration}
                 onChange={(e) => setDuration(parseFloat(e.target.value))}
@@ -324,6 +332,7 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
               </>
             )}
           </button>
+          {generationError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{generationError}</p>}
         </form>
       </div>
 
