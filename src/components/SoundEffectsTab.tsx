@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Wand2,
   Sparkles,
@@ -35,7 +35,6 @@ interface TestSample {
   prompt: string;
   duration: number;
   influence: number;
-  freqType: 'scifi' | 'laser' | 'forest' | 'magic' | 'drift' | 'ocean' | 'ui';
 }
 
 export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, apiFetch }) => {
@@ -52,21 +51,6 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
   const [audioElem, setAudioElem] = useState<HTMLAudioElement | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  // Web Audio Context for procedural test sound synthesis
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const activeSourceRef = useRef<AudioNode | null>(null);
-
-  const getAudioContext = () => {
-    if (!audioCtxRef.current) {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      audioCtxRef.current = new AudioContextClass();
-    }
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
-    return audioCtxRef.current;
-  };
-
   // Pre-rendered test sound effect library for instant testing
   const testSamples: TestSample[] = [
     {
@@ -77,7 +61,6 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
       prompt: language === 'zh' ? '电影级重金属舱门在太空中缓缓关闭，伴随低频气阀释放与机械回响' : 'Cinematic heavy metal airlock closing in space with sub-bass decompression',
       duration: 3.5,
       influence: 0.35,
-      freqType: 'scifi'
     },
     {
       id: 'test_laser_pulse',
@@ -87,7 +70,6 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
       prompt: language === 'zh' ? '科幻粒子加速武器高能充能与瞬时冲击波爆发音效' : 'Sci-fi energy weapon charging up followed by explosive laser pulse',
       duration: 2.5,
       influence: 0.4,
-      freqType: 'laser'
     },
     {
       id: 'test_forest_walk',
@@ -97,7 +79,6 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
       prompt: language === 'zh' ? '秋日阳光下踩在干燥松脆落叶上的清脆脚步声与微风' : 'Gentle footsteps crunching on crisp autumn dry leaves in a serene forest',
       duration: 4.0,
       influence: 0.3,
-      freqType: 'forest'
     },
     {
       id: 'test_magic_heal',
@@ -107,7 +88,6 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
       prompt: language === 'zh' ? '清澈如水晶般的水滴回响与轻柔闪烁的治愈魔法咒语辉光' : 'Sparkling celestial magic healing spell with crystalline harmonic resonance',
       duration: 3.0,
       influence: 0.45,
-      freqType: 'magic'
     },
     {
       id: 'test_car_drift',
@@ -117,7 +97,6 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
       prompt: language === 'zh' ? '超跑赛车轮胎在湿滑柏油路面上高速过弯漂移的摩擦尖叫' : 'High-speed supercar tire screeching drift on asphalt corner with engine roar',
       duration: 3.5,
       influence: 0.3,
-      freqType: 'drift'
     },
     {
       id: 'test_ocean_wave',
@@ -127,7 +106,6 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
       prompt: language === 'zh' ? '深邃海浪拍击岸边岩石的低频轰鸣与泡沫消散立体声音效' : 'Deep ocean waves crashing against rocky shoreline with foam resonance',
       duration: 4.5,
       influence: 0.3,
-      freqType: 'ocean'
     },
     {
       id: 'test_ui_chime',
@@ -137,128 +115,13 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
       prompt: language === 'zh' ? '未来科技全息界面成功确认与操作反馈微音效' : 'Modern minimalist holographic UI positive confirmation chime',
       duration: 1.2,
       influence: 0.5,
-      freqType: 'ui'
     }
   ];
-
-  // Play procedural sound for instant testing
-  const playProceduralSound = (type: TestSample['freqType'], sampleId: string, durationSec: number = 3) => {
-    try {
-      if (playingId === sampleId) {
-        stopAllAudio();
-        return;
-      }
-      stopAllAudio();
-      setPlayingId(sampleId);
-
-      const ctx = getAudioContext();
-      const now = ctx.currentTime;
-
-      if (type === 'laser') {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(1400, now);
-        osc.frequency.exponentialRampToValueAtTime(120, now + 0.4);
-        gain.gain.setValueAtTime(0.5, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.6);
-        activeSourceRef.current = osc;
-        setTimeout(() => setPlayingId(null), 600);
-      } else if (type === 'magic') {
-        const osc1 = ctx.createOscillator();
-        const osc2 = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc1.type = 'sine';
-        osc2.type = 'triangle';
-        osc1.frequency.setValueAtTime(523.25, now);
-        osc1.frequency.linearRampToValueAtTime(1046.5, now + 1.2);
-        osc2.frequency.setValueAtTime(659.25, now);
-        osc2.frequency.linearRampToValueAtTime(1318.5, now + 1.2);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 2.2);
-        osc1.connect(gain);
-        osc2.connect(gain);
-        gain.connect(ctx.destination);
-        osc1.start(now);
-        osc2.start(now);
-        osc1.stop(now + 2.3);
-        osc2.stop(now + 2.3);
-        activeSourceRef.current = osc1;
-        setTimeout(() => setPlayingId(null), 2300);
-      } else if (type === 'ui') {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, now);
-        osc.frequency.setValueAtTime(1760, now + 0.08);
-        gain.gain.setValueAtTime(0.35, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.45);
-        activeSourceRef.current = osc;
-        setTimeout(() => setPlayingId(null), 450);
-      } else {
-        // Sci-fi / Drift / Ocean / Forest noise + filter sweep
-        const bufferSize = ctx.sampleRate * Math.min(durationSec, 3);
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          const t = i / ctx.sampleRate;
-          const decay = Math.exp(-t * (type === 'scifi' ? 1.0 : 0.8));
-          data[i] = (Math.random() * 2 - 1) * decay;
-        }
-        const noise = ctx.createBufferSource();
-        noise.buffer = buffer;
-
-        const filter = ctx.createBiquadFilter();
-        if (type === 'scifi') {
-          filter.type = 'lowpass';
-          filter.frequency.setValueAtTime(400, now);
-          filter.frequency.exponentialRampToValueAtTime(60, now + 1.5);
-        } else if (type === 'drift') {
-          filter.type = 'bandpass';
-          filter.frequency.setValueAtTime(1800, now);
-          filter.Q.value = 4.0;
-        } else {
-          filter.type = 'lowpass';
-          filter.frequency.setValueAtTime(800, now);
-        }
-
-        const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
-
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(ctx.destination);
-
-        noise.start(now);
-        noise.stop(now + durationSec);
-        activeSourceRef.current = noise;
-        setTimeout(() => setPlayingId(null), durationSec * 1000);
-      }
-    } catch (e) {
-      console.warn('Web Audio synthesis fallback error:', e);
-      setPlayingId(null);
-    }
-  };
 
   const stopAllAudio = () => {
     if (audioElem) {
       audioElem.pause();
       setAudioElem(null);
-    }
-    if (activeSourceRef.current) {
-      try {
-        (activeSourceRef.current as any).stop?.();
-      } catch (e) {}
-      activeSourceRef.current = null;
     }
     setPlayingId(null);
   };
@@ -519,7 +382,7 @@ export const SoundEffectsTab: React.FC<SoundEffectsTabProps> = ({ language, t, a
                 <div className="flex items-center justify-between pt-1 border-t border-gray-200/50">
                   <button
                     type="button"
-                    onClick={() => playProceduralSound(sample.freqType, sample.id, sample.duration)}
+                    onClick={() => setPrompt(sample.prompt)}
                     className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
                       isPlaying
                         ? 'bg-amber-600 hover:bg-amber-700 text-white'

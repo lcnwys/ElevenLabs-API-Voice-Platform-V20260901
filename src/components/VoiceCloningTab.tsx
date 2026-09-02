@@ -162,7 +162,7 @@ export function VoiceCloningTab({
       if (res.ok) {
         const data = await res.json();
         setActionMessage(language === 'zh' ? `✓ 成功创建即时克隆音色 "${ivcName}"！已自动注入音色库。` : `✓ Created voice "${ivcName}"!`);
-        notifyVoiceAdded(data.voice);
+        notifyVoiceAdded(data.voice || data);
         setIvcName('');
         setIvcDescription('');
         setIvcFile(null);
@@ -231,8 +231,8 @@ export function VoiceCloningTab({
         setTrainingSuccessSlot(data.slot);
         setActionMessage(language === 'zh' ? `✓ 专业声音克隆训练完成！已成功分配至专业插槽 #${data.slot?.slot_index}。` : `✓ Professional Voice Clone trained!`);
         fetchPvcSlots();
-        if (data.voice) {
-          notifyVoiceAdded(data.voice);
+        if (data.voice || data.voice_id) {
+          notifyVoiceAdded(data.voice || data);
         }
       } else {
         const err = await res.json().catch(() => ({}));

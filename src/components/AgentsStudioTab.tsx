@@ -319,67 +319,16 @@ export const AgentsStudioTab: React.FC<AgentsStudioTabProps> = ({
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setTranscript(prev => [...prev, { sender: 'user', text: userText, time: now }]);
 
-    // Trigger Agent intelligent response
-    setTimeout(async () => {
-      let reply = 'I understand your query. Let me provide the best solution right away.';
-      if (language === 'zh') {
-        const queryLower = userText.toLowerCase();
-        if (queryLower.includes('你好') || queryLower.includes('早') || queryLower.includes('在吗')) {
-          reply = `您好！很高兴与您实时连线通话，请问有什么可以协助您？`;
-        } else if (queryLower.includes('费用') || queryLower.includes('价格') || queryLower.includes('套餐')) {
-          reply = `关于企业定价，ElevenLabs 提供从 Starter、Creator 到定制 Enterprise 多种配额方案，支持按百万字符量计费并提供超低延迟并发。`;
-        } else if (queryLower.includes('克隆') || queryLower.includes('声音')) {
-          reply = `声音克隆模块支持 Instant 快速克隆与 PVC 专业母带级复刻，您可以在左侧声音库中随时管理您的音色资产。`;
-        } else {
-          reply = `已收到您的语音诉求：“${userText}”。根据系统设定的业务知识库，我已为您完成实时检索与声学应答。`;
-        }
-      }
-
-      const audioUrl = await playAgentAudio(reply);
-
-      setTranscript(prev => [
-        ...prev,
-        {
-          sender: 'agent',
-          text: reply,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          audioUrl
-        }
-      ]);
-    }, 600);
+    setPermissionError(language === 'zh'
+      ? '实时会话需要接入 ElevenLabs Agents 官方客户端/WebSocket，已禁用本地模拟回复。'
+      : 'Live sessions require the official ElevenLabs Agents client/WebSocket; local simulated replies are disabled.');
   };
 
   const handleStartCall = () => {
     if (!selectedAgent) return;
-    setIsCalling(true);
-    setCallStatus('connecting');
-    setTranscript([]);
-    setPermissionError(null);
-
-    setTimeout(async () => {
-      setCallStatus('connected');
-      const firstMsg = selectedAgent.conversation_config?.agent?.first_message ||
-        (language === 'zh' ? '您好！我是您的智能语音助理，请问今天有什么可以为您效劳？' : 'Hello! How can I assist your business today?');
-      
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      
-      // Play Audio First message
-      const audioUrl = await playAgentAudio(firstMsg);
-
-      setTranscript([
-        {
-          sender: 'agent',
-          text: firstMsg,
-          time: now,
-          audioUrl
-        }
-      ]);
-
-      // Start live mic listening
-      if (inputMode === 'voice') {
-        startMicrophoneRecognition();
-      }
-    }, 1200);
+    setPermissionError(language === 'zh'
+      ? '实时会话需要接入 ElevenLabs Agents 官方客户端/WebSocket，已禁用本地模拟通话。'
+      : 'Live sessions require the official ElevenLabs Agents client/WebSocket; local simulated calls are disabled.');
   };
 
   const handleHangup = () => {
@@ -609,7 +558,7 @@ export const AgentsStudioTab: React.FC<AgentsStudioTabProps> = ({
                     <div className="w-12 h-12 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 shadow-xs">
                       <Radio className="h-6 w-6 text-gray-400" />
                     </div>
-                    <p className="text-xs font-semibold text-gray-700">{t.agents_mock_chat_tip}</p>
+                    <p className="text-xs font-semibold text-gray-700">{language === 'zh' ? '暂无官方会话记录' : 'No official conversation transcript yet'}</p>
                     <p className="text-[11px] text-gray-500 max-w-sm">
                       {language === 'zh'
                         ? '点击右上角“发起实时语音对话测试”，即可通过麦克风与 AI 智能体直接交谈，智能体将实时语音播报作答。'

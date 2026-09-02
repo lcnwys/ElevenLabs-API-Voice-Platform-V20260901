@@ -90,7 +90,7 @@ export default function App() {
   // Core States
   const [apiStatus, setApiStatus] = useState<ApiStatus>({
     configured: false,
-    mode: 'simulator',
+    mode: 'unconfigured',
     message: 'Detecting...'
   });
 
@@ -270,11 +270,11 @@ export default function App() {
       setApiStatus(statusData);
 
       const modelsRes = await apiFetch('/api/models');
-      const modelsData = await modelsRes.json();
-      setModels(modelsData);
+      const modelsData = modelsRes.ok ? await modelsRes.json() : [];
+      setModels(Array.isArray(modelsData) ? modelsData : []);
 
       const voicesRes = await apiFetch('/api/voices');
-      const voicesData = await voicesRes.json();
+      const voicesData = voicesRes.ok ? await voicesRes.json() : { voices: [] };
       const loadedVoices = voicesData.voices || [];
       setVoices(loadedVoices);
 
@@ -283,14 +283,6 @@ export default function App() {
         setStsVoiceId(loadedVoices[0].voice_id);
       }
 
-      const savedHistory = localStorage.getItem('elevenlabs_history_v2');
-      if (savedHistory) {
-        try {
-          setHistoryItems(JSON.parse(savedHistory));
-        } catch (e) {
-          console.error('Failed parsing history logs:', e);
-        }
-      }
     } catch (err) {
       console.error('Failed load core data:', err);
     } finally {
@@ -327,7 +319,6 @@ export default function App() {
   // Sync state with storage
   const saveHistoryToStorage = (updatedHistory: HistoryItem[]) => {
     setHistoryItems(updatedHistory);
-    localStorage.setItem('elevenlabs_history_v2', JSON.stringify(updatedHistory));
   };
 
   // 1. TTS Synthesis Handler
@@ -624,7 +615,11 @@ export default function App() {
       const res = await apiFetch('/api/voice-design/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(designParams)
+        body: JSON.stringify({
+          text: designParams.text,
+          model_id: 'eleven_multilingual_ttv_v2',
+          voice_description: `${designParams.gender} voice, ${designParams.age}, ${designParams.accent} accent with accent strength ${designParams.accent_strength}`
+        })
       });
 
       if (!res.ok) {
@@ -668,7 +663,7 @@ export default function App() {
       }
 
       const data = await res.json();
-      const savedVoice: Voice = data.voice;
+      const savedVoice: Voice = data.voice || data;
       setVoices(prev => [savedVoice, ...prev]);
       setSelectedVoiceId(savedVoice.voice_id);
       
@@ -915,7 +910,7 @@ export default function App() {
                   ? t.mode_custom_proxy
                   : apiStatus.configured
                   ? t.mode_official_direct
-                  : t.simulator_active}
+                  : language === 'zh' ? '未配置 API Key' : 'API key required'}
               </span>
             </div>
           </div>
@@ -1002,18 +997,6 @@ export default function App() {
                   </div>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
-
-        {/* SIMULATOR BANNER */}
-        {!apiStatus.configured && !customApiKey && (
-          <div id="simulator_banner" className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 text-xs text-amber-900 flex items-center justify-between shrink-0">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-              <p>
-                <strong>{t.simulator_warning_title}</strong> {t.simulator_warning_body}
-              </p>
             </div>
           </div>
         )}
@@ -1126,6 +1109,7 @@ export default function App() {
               {/* Music */}
               {activeTab === 'music' && (
                 <MusicStudioTab
+                  apiFetch={apiFetch}
                   apiKeyConfigured={apiStatus.configured || !!customApiKey}
                   onNotify={(msg, type) => {
                     if (type === 'error') alert(msg);

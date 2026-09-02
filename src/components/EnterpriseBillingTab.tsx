@@ -213,309 +213,29 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'credits' | 'cost' | 'keys' | 'members' | 'groups' | 'notifications' | 'resources'>('credits');
 
   // Subscription state
-  const [subscription, setSubscription] = useState<SubscriptionUsage | null>({
-    tier: 'scale',
-    status: 'active',
-    character_count: 652400,
-    character_limit: 1810000,
-    can_extend_character_limit: true,
-    allowed_to_extend_character_limit: true,
-    next_character_count_reset_unix: Math.floor(Date.now() / 1000) + 86400 * 22,
-    voice_limit: 60,
-    professional_voice_limit: 6,
-    can_extend_voice_limit: true,
-    can_use_instant_voice_cloning: true,
-    can_use_professional_voice_cloning: true,
-    currency: 'usd',
-    max_concurrency: 30,
-    active_concurrency: 12,
-    billing_period: 'monthly_period',
-    has_open_invoices: false,
-    user_first_name: 'Enterprise Admin',
-    plan_base_fee_usd: 299,
-    usage_estimated_value_usd: 52.19,
-    overage_fee_usd: 0,
-    total_estimated_spend_usd: 299,
-    is_real_data: false
-  });
+  const [subscription, setSubscription] = useState<SubscriptionUsage | null>(null);
 
   const [pvcOverview, setPvcOverview] = useState<PvcSlotsOverview | null>(null);
   
   // Cost Attribution Items
-  const [costItems, setCostItems] = useState<CostAttributionItem[]>([
-    {
-      id: 'cost_1',
-      category: 'TTS',
-      model_id: 'eleven_turbo_v2_5',
-      model_name: 'Eleven Turbo v2.5',
-      department: '智能客服 AI 组',
-      characters: 285400,
-      cost_usd: 14.27,
-      invocations: 1840,
-      percentage: 43.8
-    },
-    {
-      id: 'cost_2',
-      category: 'TTS',
-      model_id: 'eleven_multilingual_v2',
-      model_name: 'Eleven Multilingual v2',
-      department: '出海视频配音部',
-      characters: 198000,
-      cost_usd: 19.80,
-      invocations: 620,
-      percentage: 30.3
-    },
-    {
-      id: 'cost_3',
-      category: 'Sound Effects',
-      model_id: 'eleven_flash_v2_5',
-      model_name: 'Eleven Flash v2.5',
-      department: '海外研发工程部',
-      characters: 94000,
-      cost_usd: 2.35,
-      invocations: 940,
-      percentage: 14.4
-    },
-    {
-      id: 'cost_4',
-      category: 'Agents',
-      model_id: 'eleven_v3_conversational',
-      model_name: 'Eleven v3 Conversational',
-      department: '智能客服 AI 组',
-      characters: 52000,
-      cost_usd: 6.24,
-      invocations: 310,
-      percentage: 8.0
-    },
-    {
-      id: 'cost_5',
-      category: 'Voice Design',
-      model_id: 'eleven_v3',
-      model_name: 'Eleven v3 (Cinematic)',
-      department: '数字内容与声优部',
-      characters: 23000,
-      cost_usd: 3.45,
-      invocations: 85,
-      percentage: 3.5
-    }
-  ]);
+  const [costItems, setCostItems] = useState<CostAttributionItem[]>([]);
 
-  const [totalCostUsd, setTotalCostUsd] = useState(299.0);
+  const [totalCostUsd, setTotalCostUsd] = useState(0);
 
   // API Keys state
-  const [apiKeys, setApiKeys] = useState<ServiceApiKey[]>([
-    {
-      key_id: 'key_prod_master',
-      name: 'ElevenLabs 生产集群主密钥 (Master Key)',
-      prefix: 'sk_live_...9f82',
-      type: 'master_account',
-      created_at: '2025-01-10',
-      last_used_at: '刚刚活跃 (Active)',
-      character_quota: 0,
-      character_used: 652400,
-      department: '全局主账户 (ElevenLabs Root)',
-      status: 'active',
-      source: 'master_account'
-    },
-    {
-      key_id: 'key_sa_customer_service',
-      name: '智能客服实时对话 Service Account',
-      prefix: 'sk_sa_cs_...3a1c',
-      type: 'service_account',
-      created_at: '2025-01-18',
-      last_used_at: '3分钟前',
-      character_quota: 500000,
-      character_used: 285400,
-      department: '智能客服 AI 组',
-      status: 'active',
-      source: 'elevenlabs_cloud'
-    },
-    {
-      key_id: 'key_sa_dubbing_pipeline',
-      name: '出海短视频批量配音 Pipeline Key',
-      prefix: 'sk_sa_dub_...77d4',
-      type: 'service_account',
-      created_at: '2025-02-01',
-      last_used_at: '12分钟前',
-      character_quota: 400000,
-      character_used: 198000,
-      department: '出海视频配音部',
-      status: 'active',
-      source: 'elevenlabs_cloud'
-    },
-    {
-      key_id: 'key_proxy_staging',
-      name: '开发与测试网关中转 Key (Staging)',
-      prefix: 'sk_proxy_...882e',
-      type: 'proxy_router',
-      created_at: '2025-02-15',
-      last_used_at: '1小时前',
-      character_quota: 100000,
-      character_used: 94000,
-      department: '海外研发工程部',
-      status: 'restricted',
-      source: 'gateway_proxy'
-    }
-  ]);
+  const [apiKeys, setApiKeys] = useState<ServiceApiKey[]>([]);
 
   // Members state
-  const [members, setMembers] = useState<WorkspaceMember[]>([
-    {
-      user_id: 'mem_1',
-      email: 'alex.chen@secondbrain.hk',
-      first_name: 'Alex',
-      last_name: 'Chen',
-      role: 'workspace_admin',
-      character_count_used: 272800,
-      character_limit_assigned: 800000,
-      is_active: true,
-      joined_at: '2025-01-10',
-      department: '智能客服 AI 组'
-    },
-    {
-      user_id: 'mem_2',
-      email: 'meikm@secondbrain.hk',
-      first_name: 'Mei',
-      last_name: 'Kang',
-      role: 'admin',
-      character_count_used: 120400,
-      character_limit_assigned: 500000,
-      is_active: true,
-      joined_at: '2025-01-15',
-      department: '音频工程部'
-    },
-    {
-      user_id: 'mem_3',
-      email: 'linc@secondbrain.hk',
-      first_name: 'Lin',
-      last_name: 'Cai',
-      role: 'member',
-      character_count_used: 245000,
-      character_limit_assigned: 500000,
-      is_active: true,
-      joined_at: '2025-02-01',
-      department: 'AI 创作部'
-    },
-    {
-      user_id: 'mem_4',
-      email: 'ouhabsadik@gmail.com',
-      first_name: 'Sadik',
-      last_name: 'Ouhab',
-      role: 'financial_admin',
-      character_count_used: 14200,
-      character_limit_assigned: 200000,
-      is_active: true,
-      joined_at: '2025-02-12',
-      department: '运营财务团队'
-    }
-  ]);
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
 
   // Groups state
-  const [groups, setGroups] = useState<WorkspaceGroup[]>([
-    {
-      group_id: 'grp_1',
-      name: '智能客服 AI 业务线',
-      description: '负责实时语音客服智能体呼叫、IVR 对话与工单回访',
-      members_count: 8,
-      allowed_models: ['eleven_turbo_v2_5', 'eleven_flash_v2_5', 'eleven_v3_conversational'],
-      max_character_quota: 800000,
-      created_at: '2025-01-10'
-    },
-    {
-      group_id: 'grp_2',
-      name: '出海多语种视频生产线',
-      description: '负责 TikTok/YouTube 视频多语种自动配音与字幕对齐',
-      members_count: 5,
-      allowed_models: ['eleven_multilingual_v2', 'eleven_v3', 'scribe_v1'],
-      max_character_quota: 600000,
-      created_at: '2025-01-15'
-    },
-    {
-      group_id: 'grp_3',
-      name: '数字创意与音频制作组',
-      description: '负责影视音效 SFX、背景配乐与母带级 PVC 声音训练',
-      members_count: 4,
-      allowed_models: ['eleven_v3', 'music_v1', 'eleven_multilingual_v2'],
-      max_character_quota: 400000,
-      created_at: '2025-02-01'
-    }
-  ]);
+  const [groups, setGroups] = useState<WorkspaceGroup[]>([]);
 
   // Webhooks state
-  const [webhooks, setWebhooks] = useState<WorkspaceWebhook[]>([
-    {
-      webhook_id: 'wh_1',
-      name: '企业微信 / 钉钉用量告警机器人',
-      url: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=88a109bf',
-      events: ['billing.quota_80_percent', 'billing.quota_exceeded', 'key.revoked'],
-      status: 'active',
-      secret: 'whsec_...9921',
-      created_at: '2025-01-12',
-      last_triggered_at: '2025-03-01 10:24:18'
-    },
-    {
-      webhook_id: 'wh_2',
-      name: '云端视频渲染任务完成通知 (Dubbing Sync)',
-      url: 'https://api.secondbrain.hk/webhooks/11labs-dubbing',
-      events: ['dubbing.completed', 'dubbing.failed', 'pvc.training_ready'],
-      status: 'active',
-      secret: 'whsec_...319a',
-      created_at: '2025-01-20',
-      last_triggered_at: '2025-02-28 16:42:05'
-    }
-  ]);
+  const [webhooks, setWebhooks] = useState<WorkspaceWebhook[]>([]);
 
   // Audit logs state
-  const [auditLogs, setAuditLogs] = useState<EnterpriseAuditLogItem[]>([
-    {
-      id: 'aud_1',
-      timestamp: '2025-03-01 14:22:10',
-      actor: 'alex.chen@secondbrain.hk',
-      action: 'API Key Quota Adjusted',
-      category: 'Billing',
-      details: '为智能客服 Service Account 增加 100,000 字符额度上限',
-      characters: 0,
-      cost_usd: 0,
-      ip_address: '119.237.14.88',
-      status: 'success'
-    },
-    {
-      id: 'aud_2',
-      timestamp: '2025-03-01 11:05:32',
-      actor: 'System Auto-CircuitBreaker',
-      action: 'Rate Limit Warning',
-      category: 'API Key',
-      details: '开发测试 Key 达到 80% 额度预警阈值 (94k / 100k)',
-      characters: 94000,
-      cost_usd: 2.35,
-      ip_address: '10.0.4.12',
-      status: 'warning'
-    },
-    {
-      id: 'aud_3',
-      timestamp: '2025-03-01 09:18:44',
-      actor: 'meikm@secondbrain.hk',
-      action: 'Voice Model Batch Synthesis',
-      category: 'TTS',
-      details: '出海短视频批量生成 42 条多语种配音 (Eleven Multilingual v2)',
-      characters: 45200,
-      cost_usd: 4.52,
-      ip_address: '183.14.132.50',
-      status: 'success'
-    },
-    {
-      id: 'aud_4',
-      timestamp: '2025-02-28 17:40:19',
-      actor: 'linc@secondbrain.hk',
-      action: 'PVC Slot Voice Export',
-      category: 'Voice Cloning',
-      details: '完成专业声优 PVC 母带声音插槽微调与试听验证',
-      characters: 0,
-      cost_usd: 0,
-      ip_address: '14.198.80.201',
-      status: 'success'
-    }
-  ]);
+  const [auditLogs, setAuditLogs] = useState<EnterpriseAuditLogItem[]>([]);
 
   const [playingPvcSlotId, setPlayingPvcSlotId] = useState<string | null>(null);
   const [releasingSlotId, setReleasingSlotId] = useState<string | null>(null);
@@ -562,12 +282,20 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
   const fetchEnterpriseData = async () => {
     try {
       setRefreshing(true);
+      setCostItems([]);
+      setTotalCostUsd(0);
+      setApiKeys([]);
+      setMembers([]);
+      setGroups([]);
+      setWebhooks([]);
+      setAuditLogs([]);
+      setPvcOverview(null);
       // 1. Subscription
       const subRes = await apiFetch('/api/subscription');
       let loadedSub: SubscriptionUsage | null = null;
       if (subRes.ok) {
         loadedSub = await subRes.json();
-        if (loadedSub && loadedSub.tier !== 'none' && loadedSub.character_limit > 0) {
+        if (loadedSub) {
           setSubscription(loadedSub);
         }
       }
@@ -576,10 +304,10 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       const costRes = await apiFetch('/api/billing-breakdown');
       if (costRes.ok) {
         const costData = await costRes.json();
-        if (Array.isArray(costData.breakdown) && costData.breakdown.length > 0) {
+        if (Array.isArray(costData.breakdown)) {
           setCostItems(costData.breakdown);
         }
-        if (typeof costData.total_cost_usd === 'number' && costData.total_cost_usd > 0) {
+        if (typeof costData.total_cost_usd === 'number') {
           setTotalCostUsd(costData.total_cost_usd);
         }
       }
@@ -588,8 +316,9 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       const keysRes = await apiFetch('/api/workspace/keys');
       if (keysRes.ok) {
         const keysData = await keysRes.json();
-        if (Array.isArray(keysData.keys) && keysData.keys.length > 0) {
-          setApiKeys(keysData.keys);
+        const officialKeys = keysData.keys || keysData.service_accounts || keysData;
+        if (Array.isArray(officialKeys)) {
+          setApiKeys(officialKeys);
         }
       }
 
@@ -597,7 +326,7 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       const membersRes = await apiFetch('/api/workspace/members');
       if (membersRes.ok) {
         const membersData = await membersRes.json();
-        if (Array.isArray(membersData.members) && membersData.members.length > 0) {
+        if (Array.isArray(membersData.members)) {
           setMembers(membersData.members);
         }
       }
@@ -606,7 +335,7 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       const groupsRes = await apiFetch('/api/workspace/groups');
       if (groupsRes.ok) {
         const groupsData = await groupsRes.json();
-        if (Array.isArray(groupsData.groups) && groupsData.groups.length > 0) {
+        if (Array.isArray(groupsData.groups)) {
           setGroups(groupsData.groups);
         }
       }
@@ -615,7 +344,7 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       const whRes = await apiFetch('/api/workspace/webhooks');
       if (whRes.ok) {
         const whData = await whRes.json();
-        if (Array.isArray(whData.webhooks) && whData.webhooks.length > 0) {
+        if (Array.isArray(whData.webhooks)) {
           setWebhooks(whData.webhooks);
         }
       }
@@ -624,7 +353,7 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
       const auditRes = await apiFetch('/api/workspace/audit-logs');
       if (auditRes.ok) {
         const auditData = await auditRes.json();
-        if (Array.isArray(auditData.logs) && auditData.logs.length > 0) {
+        if (Array.isArray(auditData.logs)) {
           setAuditLogs(auditData.logs);
         }
       }
@@ -709,27 +438,22 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
-
-    const newMember: WorkspaceMember = {
-      user_id: `mem_${Date.now()}`,
-      email: inviteEmail,
-      first_name: inviteEmail.split('@')[0],
-      role: inviteRole,
-      department: inviteDept,
-      character_count_used: 0,
-      character_limit_assigned: inviteQuota,
-      is_active: true,
-      joined_at: new Date().toISOString().split('T')[0]
-    };
-
-    setMembers(prev => [newMember, ...prev]);
-    setShowInviteModal(false);
-    setInviteEmail('');
+    const res = await apiFetch('/api/workspace/members', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: inviteEmail, role: inviteRole, department: inviteDept, character_limit_assigned: inviteQuota })
+    });
+    if (res.ok) {
+      setShowInviteModal(false);
+      setInviteEmail('');
+      fetchEnterpriseData();
+    }
   };
 
   const handleRemoveMember = async (memberId: string) => {
     if (!confirm(language === 'zh' ? '确定将该成员移出工作区？' : 'Remove member?')) return;
-    setMembers(prev => prev.filter(m => m.user_id !== memberId));
+    const res = await apiFetch(`/api/workspace/members/${memberId}`, { method: 'DELETE' });
+    if (res.ok) setMembers(prev => prev.filter(m => m.user_id !== memberId));
   };
 
   const handleExportCostCsv = () => {
@@ -1521,7 +1245,8 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
                       value={member.role}
                       onChange={(e) => {
                         const newRole = e.target.value as any;
-                        setMembers(prev => prev.map(m => m.user_id === member.user_id ? { ...m, role: newRole } : m));
+                        void newRole;
+                        alert(language === 'zh' ? '角色更新尚未接入 ElevenLabs 官方 Workspace API。' : 'Role updates are not connected to the official ElevenLabs Workspace API yet.');
                       }}
                       className="appearance-none bg-white hover:bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 pr-7 text-xs font-medium text-gray-800 cursor-pointer focus:outline-none focus:border-black"
                     >
@@ -1538,7 +1263,8 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
                     onClick={() => {
                       const newQ = prompt(language === 'zh' ? `为 ${member.email} 设置月度字符限额 (0 = 不设上限):` : 'Set monthly quota:', String(member.character_limit_assigned || 0));
                       if (newQ !== null) {
-                        setMembers(prev => prev.map(m => m.user_id === member.user_id ? { ...m, character_limit_assigned: Number(newQ) } : m));
+                        void newQ;
+                        alert(language === 'zh' ? '成员额度更新尚未接入 ElevenLabs 官方 Workspace API。' : 'Member quota updates are not connected to the official ElevenLabs Workspace API yet.');
                       }
                     }}
                     className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-black transition"
@@ -1911,7 +1637,8 @@ export const EnterpriseBillingTab: React.FC<EnterpriseBillingProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setMembers(prev => prev.map(m => ({ ...m, character_limit_assigned: batchQuotaAmount })));
+                        void batchQuotaAmount;
+                        alert(language === 'zh' ? '批量额度更新尚未接入 ElevenLabs 官方 Workspace API。' : 'Bulk quota updates are not connected to the official ElevenLabs Workspace API yet.');
                     setShowQuotaModal(false);
                   }}
                   className="px-4 py-1.5 bg-black hover:bg-gray-800 text-white rounded-lg text-xs font-medium"

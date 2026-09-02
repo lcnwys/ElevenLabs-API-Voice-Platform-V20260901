@@ -10,7 +10,7 @@ import {
   FileCheck,
   Save
 } from 'lucide-react';
-import { PronunciationDictionary, PronunciationRule } from '../types';
+import { PronunciationDictionary } from '../types';
 
 interface PronunciationTabProps {
   language: 'zh' | 'en';
@@ -49,23 +49,9 @@ export const PronunciationTab: React.FC<PronunciationTabProps> = ({ language, t,
   const handleAddRule = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRuleWord.trim() || !newRuleReplacement.trim() || !selectedDict) return;
-
-    const newRule: PronunciationRule = {
-      string_to_replace: newRuleWord.trim(),
-      rule_type: newRuleType,
-      replacement: newRuleReplacement.trim(),
-      alphabet: newRuleType === 'phoneme' ? 'ipa' : undefined
-    };
-
-    const updated = {
-      ...selectedDict,
-      rules: [newRule, ...selectedDict.rules]
-    };
-
-    setSelectedDict(updated);
-    setDictionaries(prev => prev.map(d => (d.id === updated.id ? updated : d)));
-    setNewRuleWord('');
-    setNewRuleReplacement('');
+    alert(language === 'zh'
+      ? '当前只读取 ElevenLabs 官方词典；规则写入接口尚未接入，未保存本地修改。'
+      : 'Only official ElevenLabs dictionaries are read; rule writes are not connected and no local change was saved.');
   };
 
   const handleTestPhonemes = () => {
@@ -183,11 +169,9 @@ export const PronunciationTab: React.FC<PronunciationTabProps> = ({ language, t,
                     <button
                       onClick={() => {
                         if (!selectedDict) return;
-                        const updated = {
-                          ...selectedDict,
-                          rules: selectedDict.rules.filter((_, i) => i !== idx)
-                        };
-                        setSelectedDict(updated);
+                        alert(language === 'zh'
+                          ? '词典删除/修改请使用 ElevenLabs 官方词典接口，未执行本地删除。'
+                          : 'Use the official ElevenLabs dictionary API to modify dictionaries; no local deletion was performed.');
                       }}
                       className="text-gray-400 hover:text-red-600 transition"
                     >
@@ -204,8 +188,8 @@ export const PronunciationTab: React.FC<PronunciationTabProps> = ({ language, t,
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm h-full flex flex-col justify-between">
             <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{t.dict_simulator_title}</h3>
-              <p className="text-xs text-gray-500">{t.dict_simulator_desc}</p>
+              <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{language === 'zh' ? '发音词典预览' : 'Pronunciation dictionary preview'}</h3>
+              <p className="text-xs text-gray-500">{language === 'zh' ? '仅展示已从 ElevenLabs 官方接口读取的词典规则。' : 'Only rules loaded from the official ElevenLabs API are shown.'}</p>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">{t.dict_test_input}</label>

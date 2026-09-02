@@ -151,29 +151,24 @@ export function HistoryTaskCenterTab({
       await apiFetch(`/api/history/${id}`, { method: 'DELETE' });
     } catch (e) {}
 
-    const nextLocal = historyItems.filter(i => i.id !== id);
-    setHistoryItems(nextLocal);
-    localStorage.setItem('elevenlabs_history_v2', JSON.stringify(nextLocal));
+    setHistoryItems(historyItems.filter(i => i.id !== id));
     fetchCloudHistory();
   };
 
   const handleClearAllHistory = () => {
     if (!confirm(t.clear_history_warn)) return;
     setHistoryItems([]);
-    localStorage.removeItem('elevenlabs_history_v2');
     fetchCloudHistory();
   };
 
   const handleUpdateRating = (id: string, rating: number) => {
     const updated = historyItems.map(item => item.id === id ? { ...item, rating } : item);
     setHistoryItems(updated);
-    localStorage.setItem('elevenlabs_history_v2', JSON.stringify(updated));
   };
 
   const handleUpdateComment = (id: string, comment: string) => {
     const updated = historyItems.map(item => item.id === id ? { ...item, comment } : item);
     setHistoryItems(updated);
-    localStorage.setItem('elevenlabs_history_v2', JSON.stringify(updated));
   };
 
   return (

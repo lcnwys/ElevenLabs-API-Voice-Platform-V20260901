@@ -28,9 +28,10 @@ import { MusicGenerationParams, MusicTrackResult } from '../types';
 interface MusicStudioTabProps {
   onNotify?: (msg: string, type?: 'success' | 'error' | 'info') => void;
   apiKeyConfigured?: boolean;
+  apiFetch: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
-export const MusicStudioTab: React.FC<MusicStudioTabProps> = ({ onNotify, apiKeyConfigured }) => {
+export const MusicStudioTab: React.FC<MusicStudioTabProps> = ({ onNotify, apiKeyConfigured, apiFetch }) => {
   const [params, setParams] = useState<MusicGenerationParams>({
     prompt: 'Cinematic cyberpunk synthwave with driving bassline, retro arpeggios, and neon atmospheric pads',
     model_id: 'music_v2',
@@ -95,7 +96,7 @@ export const MusicStudioTab: React.FC<MusicStudioTabProps> = ({ onNotify, apiKey
     if (!params.prompt.trim()) return;
     try {
       setIsGenerating(true);
-      const res = await fetch('/api/music/generate', {
+      const res = await apiFetch('/api/music/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params)

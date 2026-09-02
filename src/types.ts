@@ -2,7 +2,7 @@
 
 export interface ApiStatus {
   configured: boolean;
-  mode: 'api' | 'simulator';
+  mode: 'api' | 'unconfigured';
   message: string;
 }
 
@@ -440,4 +440,3 @@ export interface PvcSlotsOverview {
   can_use_pvc: boolean;
   slots: PvcSlot[];
 }
-
