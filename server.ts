@@ -88,6 +88,13 @@ function fileForm(file: Express.Multer.File, fieldName: string, fields: Record<s
   return form;
 }
 
+function filesForm(files: Express.Multer.File[], fields: Record<string, unknown> = {}) {
+  const form = new FormData();
+  for (const file of files) form.append('files[]', new Blob([file.buffer], { type: file.mimetype }), file.originalname);
+  for (const [key, value] of Object.entries(fields)) if (value !== undefined && value !== null && value !== '') form.append(key, String(value));
+  return form;
+}
+
 function mapDubbingProject(project: any) {
   return { ...project, dubbing_id: project.project_id, name: project.reference || project.project_id, source_lang: project.source_language || 'auto', target_lang: project.language_ids?.[0] || '', source_language: project.source_language || 'auto', target_languages: project.language_ids || [], created_at: project.created_at ? Date.parse(project.created_at) : undefined };
 }
@@ -112,9 +119,11 @@ app.post('/api/tts', (req, res) => {
   const query = output_format ? `?output_format=${encodeURIComponent(output_format)}` : '';
   return binaryRequest(req, res, `/v1/text-to-speech/${encodeURIComponent(voice_id)}${query}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, model_id, voice_settings }) });
 });
-app.post('/api/voices/add', upload.single('file'), (req, res) => {
-  if (!req.file || !req.body.name) return res.status(400).json({ error: 'name and file are required' });
-  return jsonRequest(req, res, '/v1/voices/add', { method: 'POST', body: fileForm(req.file, 'files', { name: req.body.name, description: req.body.description }) }).then(() => undefined);
+app.post('/api/voices/add', upload.fields([{ name: 'files', maxCount: 20 }, { name: 'file', maxCount: 20 }]), (req, res) => {
+  const grouped = (req.files || {}) as Record<string, Express.Multer.File[]>;
+  const files = [...(grouped.files || []), ...(grouped.file || [])];
+  if (files.length === 0 || !req.body.name) return res.status(400).json({ error: 'name and at least one audio file are required' });
+  return jsonRequest(req, res, '/v1/voices/add', { method: 'POST', body: filesForm(files, { name: req.body.name, description: req.body.description, remove_background_noise: req.body.remove_noise }) }).then(() => undefined);
 });
 app.delete('/api/voices/:voice_id', (req, res) => jsonRequest(req, res, `/v1/voices/${encodeURIComponent(req.params.voice_id)}`, { method: 'DELETE' }));
 app.post('/api/sts', upload.single('file'), (req, res) => {
@@ -327,5 +336,13 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'API route not found' }));
+app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!req.originalUrl.startsWith('/api')) return next(error);
+  const isUploadError = error instanceof multer.MulterError;
+  return res.status(isUploadError ? 400 : 500).json({
+    error: isUploadError ? `Upload error: ${error.message}` : 'Internal server error',
+    code: isUploadError ? error.code : 'INTERNAL_SERVER_ERROR'
+  });
+});
 export { app };
 if (!process.env.VERCEL) app.listen(port, () => console.log(`Server running at http://localhost:${port}`));

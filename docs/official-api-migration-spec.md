@@ -23,6 +23,12 @@ Make the application a strict ElevenLabs API console. Requests must use the conf
 - The UI must explicitly state that invoice history and line-item billing are available in the ElevenLabs Subscription dashboard, not claim that the public API provides them.
 - Any model price calculator is an estimate/reference only and must be visually separated from official account data.
 
+## Voice cloning upload contract
+
+- The adapter accepts one or more client fields named `files` (and keeps `file` as a compatibility alias), then forwards every file as the official `files[]` multipart field.
+- The client-facing `remove_noise` option is translated to the official `remove_background_noise` field.
+- Multipart parser failures return JSON `400` responses instead of the framework's HTML `500` page.
+
 ## Non-goals
 
 - Rebuilding the UI from scratch.
