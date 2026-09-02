@@ -4244,7 +4244,12 @@ app.use('*', async (req, res, next) => {
   }
 });
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port} in ${process.env.NODE_ENV || 'development'} mode`);
-});
+// Export the app for serverless runtimes such as Vercel.
+export { app };
+
+// Start the server only when running locally.
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
+    console.log(`Server is running at http://localhost:${port} in ${process.env.NODE_ENV || 'development'} mode`);
+  });
+}
